@@ -1,14 +1,21 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:uuid/uuid.dart';
 import '../models/incident.dart';
+import '../services/database_service.dart';
 import '../core/utils/dummy_data.dart';
 import '../core/constants/constants.dart';
 
 class IncidentProvider with ChangeNotifier {
+  final DatabaseService _databaseService = DatabaseService();
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
   List<Incident> _incidents = [];
   bool _isLoading = false;
   String? _errorMessage;
+  StreamSubscription<QuerySnapshot>? _incidentSubscription;
+  String? _currentEventId;
 
   List<Incident> get incidents => _incidents;
   bool get isLoading => _isLoading;
@@ -58,20 +65,87 @@ class IncidentProvider with ChangeNotifier {
   }
 
   // Initialize incidents
-  Future<void> initialize() async {
+  Future<void> initialize({String? eventId}) async {
     _isLoading = true;
     notifyListeners();
 
     try {
-      await Future.delayed(const Duration(milliseconds: 500));
-      _incidents = List.from(DummyData.incidents);
+      _currentEventId = eventId;
+
+      if (eventId != null) {
+        // Load from Firestore
+        await _loadIncidentsFromFirestore(eventId);
+      }
+
+      // Fallback to dummy data if Firestore is empty
+      if (_incidents.isEmpty) {
+        _incidents = List.from(DummyData.incidents);
+      }
     } catch (e) {
       _errorMessage = 'Failed to load incidents';
       debugPrint('Error initializing incidents: $e');
+      // Fallback to dummy data
+      _incidents = List.from(DummyData.incidents);
     } finally {
       _isLoading = false;
       notifyListeners();
     }
+  }
+
+  // Load incidents from Firestore
+  Future<void> _loadIncidentsFromFirestore(String eventId) async {
+    try {
+      final snapshot = await _firestore
+          .collection('incidents')
+          .where('eventId', isEqualTo: eventId)
+          .orderBy('createdAt', descending: true)
+          .get();
+
+      if (snapshot.docs.isNotEmpty) {
+        _incidents = snapshot.docs.map((doc) {
+          return Incident.fromJson({
+            'id': doc.id,
+            ...doc.data(),
+          });
+        }).toList();
+      }
+    } catch (e) {
+      debugPrint('Error loading incidents from Firestore: $e');
+    }
+  }
+
+  // Start real-time updates
+  void startRealTimeUpdates({String? eventId}) {
+    _currentEventId = eventId ?? _currentEventId;
+
+    if (_currentEventId != null) {
+      _incidentSubscription?.cancel();
+      _incidentSubscription = _firestore
+          .collection('incidents')
+          .where('eventId', isEqualTo: _currentEventId)
+          .orderBy('createdAt', descending: true)
+          .snapshots()
+          .listen((snapshot) {
+        _processIncidentSnapshot(snapshot);
+      });
+    }
+  }
+
+  // Process incident snapshot
+  void _processIncidentSnapshot(QuerySnapshot snapshot) {
+    _incidents = snapshot.docs.map((doc) {
+      return Incident.fromJson({
+        'id': doc.id,
+        ...doc.data() as Map<String, dynamic>,
+      });
+    }).toList();
+    notifyListeners();
+  }
+
+  // Stop real-time updates
+  void stopRealTimeUpdates() {
+    _incidentSubscription?.cancel();
+    _incidentSubscription = null;
   }
 
   // Report new incident
@@ -90,11 +164,8 @@ class IncidentProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      // Simulate network delay
-      await Future.delayed(const Duration(milliseconds: 800));
-
       final newIncident = Incident(
-        id: 'incident_${const Uuid().v4()}',
+        id: '', // Will be set by Firestore
         eventId: eventId,
         reportedBy: reportedBy,
         reportedByName: reportedByName,
@@ -108,12 +179,31 @@ class IncidentProvider with ChangeNotifier {
         imageUrls: imageUrls,
       );
 
-      _incidents.insert(0, newIncident); // Add to beginning of list
+      // Save to Firestore
+      final docId = await _databaseService.createIncident(newIncident);
+
+      // Add to local list with Firestore ID
+      final incidentWithId = Incident(
+        id: docId,
+        eventId: eventId,
+        reportedBy: reportedBy,
+        reportedByName: reportedByName,
+        location: location,
+        type: type,
+        description: description,
+        severity: severity,
+        status: AppConstants.statusReported,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+        imageUrls: imageUrls,
+      );
+
+      _incidents.insert(0, incidentWithId);
       _isLoading = false;
       notifyListeners();
       return true;
     } catch (e) {
-      _errorMessage = 'Failed to report incident';
+      _errorMessage = 'Failed to report incident: $e';
       _isLoading = false;
       notifyListeners();
       return false;
@@ -133,31 +223,32 @@ class IncidentProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      // Simulate network delay
-      await Future.delayed(const Duration(milliseconds: 500));
-
-      final index = _incidents.indexWhere((i) => i.id == incidentId);
-      if (index == -1) {
-        _errorMessage = 'Incident not found';
-        _isLoading = false;
-        notifyListeners();
-        return false;
-      }
-
-      final updatedIncident = _incidents[index].copyWith(
+      // Update in Firestore
+      await _databaseService.updateIncidentStatus(
+        incidentId: incidentId,
         status: newStatus,
-        updatedAt: DateTime.now(),
-        assignedTo: assignedTo ?? _incidents[index].assignedTo,
-        assignedToName: assignedToName ?? _incidents[index].assignedToName,
-        resolutionNotes: resolutionNotes ?? _incidents[index].resolutionNotes,
+        assignedTo: assignedTo,
+        resolutionNotes: resolutionNotes,
       );
 
-      _incidents[index] = updatedIncident;
+      // Update local list
+      final index = _incidents.indexWhere((i) => i.id == incidentId);
+      if (index != -1) {
+        final updatedIncident = _incidents[index].copyWith(
+          status: newStatus,
+          updatedAt: DateTime.now(),
+          assignedTo: assignedTo ?? _incidents[index].assignedTo,
+          assignedToName: assignedToName ?? _incidents[index].assignedToName,
+          resolutionNotes: resolutionNotes ?? _incidents[index].resolutionNotes,
+        );
+        _incidents[index] = updatedIncident;
+      }
+
       _isLoading = false;
       notifyListeners();
       return true;
     } catch (e) {
-      _errorMessage = 'Failed to update incident';
+      _errorMessage = 'Failed to update incident: $e';
       _isLoading = false;
       notifyListeners();
       return false;
@@ -204,8 +295,14 @@ class IncidentProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      await Future.delayed(const Duration(milliseconds: 500));
-      _incidents = List.from(DummyData.incidents);
+      if (_currentEventId != null) {
+        await _loadIncidentsFromFirestore(_currentEventId!);
+      }
+
+      // Fallback to dummy data
+      if (_incidents.isEmpty) {
+        _incidents = List.from(DummyData.incidents);
+      }
       _errorMessage = null;
     } catch (e) {
       _errorMessage = 'Failed to refresh incidents';
@@ -216,13 +313,13 @@ class IncidentProvider with ChangeNotifier {
     }
   }
 
-  // Delete incident (for demo purposes)
+  // Delete incident
   Future<bool> deleteIncident(String incidentId) async {
     _isLoading = true;
     notifyListeners();
 
     try {
-      await Future.delayed(const Duration(milliseconds: 300));
+      await _firestore.collection('incidents').doc(incidentId).delete();
       _incidents.removeWhere((i) => i.id == incidentId);
       _isLoading = false;
       notifyListeners();
@@ -252,5 +349,11 @@ class IncidentProvider with ChangeNotifier {
       'dispatched': getIncidentsByStatus(AppConstants.statusDispatched).length,
       'onSite': getIncidentsByStatus(AppConstants.statusOnSite).length,
     };
+  }
+
+  @override
+  void dispose() {
+    stopRealTimeUpdates();
+    super.dispose();
   }
 }

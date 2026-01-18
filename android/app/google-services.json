@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "416267427191",
+    "project_id": "mundial-5fee1",
+    "storage_bucket": "mundial-5fee1.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:416267427191:android:52b8da227cdb85dc9f5572",
+        "android_client_info": {
+          "package_name": "com.example.mundial_manager"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAPe2IVc7n2DfBVOOhrpaIDEVT9uW2hGHY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
