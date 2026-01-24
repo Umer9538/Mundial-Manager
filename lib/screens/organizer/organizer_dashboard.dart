@@ -12,8 +12,8 @@ import '../../widgets/common/gradient_scaffold.dart';
 import '../../widgets/common/glass_card.dart';
 import '../../widgets/common/custom_button.dart';
 import '../../widgets/common/custom_text_field.dart';
+import '../../widgets/common/profile_dialogs.dart';
 import '../../widgets/map/crowd_heatmap.dart';
-import '../../widgets/cards/stat_card.dart';
 import '../../core/utils/dummy_data.dart';
 
 class OrganizerDashboard extends StatefulWidget {
@@ -384,10 +384,99 @@ class _DashboardTab extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SizedBox(height: 16),
-                // Header with title and actions
+                const SizedBox(height: 8),
+                // App Bar: Logo + Mundial Manager + icons + avatar
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Image.asset(
+                      'assets/logo.png',
+                      width: 36,
+                      height: 36,
+                      fit: BoxFit.contain,
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      'Mundial Manager',
+                      style: GoogleFonts.montserrat(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      icon: const Icon(Icons.search, color: Colors.white),
+                      onPressed: () {},
+                    ),
+                    Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.notifications_outlined, color: Colors.white),
+                          onPressed: () {},
+                        ),
+                        Positioned(
+                          right: 8,
+                          top: 8,
+                          child: Container(
+                            width: 10,
+                            height: 10,
+                            decoration: const BoxDecoration(
+                              color: AppColors.red,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: AppColors.coolSteelBlue,
+                        border: Border.all(color: AppColors.softTealBlue, width: 2),
+                      ),
+                      child: const Icon(Icons.person, color: Colors.white, size: 20),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+
+                // Welcome Message
+                Builder(
+                  builder: (context) {
+                    final userName = Provider.of<AuthProvider>(context, listen: false)
+                        .currentUser?.name ?? 'Organizer';
+                    return Row(
+                      children: [
+                        Text(
+                          'Welcome, ',
+                          style: GoogleFonts.poppins(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w400,
+                            color: Colors.white70,
+                          ),
+                        ),
+                        Text(
+                          userName.split(' ').first,
+                          style: GoogleFonts.poppins(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.softTealBlue,
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+                const SizedBox(height: 20),
+
+              // Dashboard Card
+              GlassCard(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       'Organizer Dashboard',
@@ -396,59 +485,107 @@ class _DashboardTab extends StatelessWidget {
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
                       ),
+                      textAlign: TextAlign.center,
                     ),
-                    Row(
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.search, color: Colors.white),
-                          onPressed: () {},
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.notifications_outlined, color: Colors.white),
-                          onPressed: () {},
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
+                    const SizedBox(height: 20),
 
-                // Mundial Manager subtitle
-                Row(
-                  children: [
-                    Icon(Icons.location_on, color: AppColors.softTealBlue, size: 20),
-                    const SizedBox(width: 6),
+                    // Managed Events
                     Text(
-                      'Mundial Manager',
-                      style: GoogleFonts.roboto(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.white70,
+                      'Managed Events',
+                      style: GoogleFonts.montserrat(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    _EventCard(
+                      title: 'Annual Tech Summit',
+                      code: 'E-1024',
+                      date: '10/26/2024',
+                      icon: Icons.calendar_today,
+                      iconColor: AppColors.softTealBlue,
+                      status: 'Live',
+                      statusColor: AppColors.green,
+                    ),
+                    const SizedBox(height: 10),
+                    _EventCard(
+                      title: 'Music Fest 2024',
+                      code: 'E-1022',
+                      date: '09/15/2024',
+                      icon: Icons.music_note,
+                      iconColor: Colors.white,
+                      status: 'Upcoming',
+                      statusColor: AppColors.softTealBlue,
+                    ),
+                    const SizedBox(height: 10),
+                    _EventCard(
+                      title: 'Gaming Expo',
+                      code: 'E-1019',
+                      date: '08/01/2024',
+                      icon: Icons.sports_esports,
+                      iconColor: Colors.white,
+                      status: 'Ended',
+                      statusColor: Colors.white54,
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Live Event Map
+                    Text(
+                      'Live Event Map',
+                      style: GoogleFonts.montserrat(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: SizedBox(
+                        height: 200,
+                        child: Consumer<CrowdProvider>(
+                          builder: (context, crowdProvider, _) {
+                            if (crowdProvider.isLoading) {
+                              return Center(
+                                child: CircularProgressIndicator(color: AppColors.softTealBlue),
+                              );
+                            }
+                            return CrowdHeatmap(
+                              crowdData: crowdProvider.crowdData,
+                              zones: DummyData.zones,
+                            );
+                          },
+                        ),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 24),
+              ),
+              const SizedBox(height: 20),
 
-              // Quick Actions Grid
-              _buildActionGrid(context),
-              const SizedBox(height: 32),
-
-              // Managed Events
-              _buildManagedEvents(context),
-              const SizedBox(height: 32),
-
-              // Live Event Map
-              _buildLiveMap(context),
-              const SizedBox(height: 24),
-
-              // Action Buttons
-              CustomButton.primary(
-                text: 'Create Event',
-                icon: Icons.add,
-                onPressed: () {
-                  // TODO: Navigate to create event
-                },
+              // Action Buttons - matching design colors
+              SizedBox(
+                height: 52,
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {},
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.softTealBlue,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 0,
+                  ),
+                  child: Text(
+                    'Create Event',
+                    style: GoogleFonts.roboto(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
               ),
               const SizedBox(height: 12),
               CustomButton.danger(
@@ -460,9 +597,7 @@ class _DashboardTab extends StatelessWidget {
               CustomButton.secondary(
                 text: 'View Analytics',
                 icon: Icons.analytics_outlined,
-                onPressed: () {
-                  // TODO: Navigate to analytics
-                },
+                onPressed: () {},
               ),
               ],
             ),
@@ -472,172 +607,6 @@ class _DashboardTab extends StatelessWidget {
     );
   }
 
-  Widget _buildActionGrid(BuildContext context) {
-    return GridView.count(
-      crossAxisCount: 2,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: 12,
-      crossAxisSpacing: 12,
-      childAspectRatio: 1.3,
-      children: [
-        _ActionTile(
-          icon: Icons.add_circle_outline,
-          label: 'Create Event',
-          color: AppColors.softTealBlue,
-          onTap: () {},
-        ),
-        _ActionTile(
-          icon: Icons.campaign,
-          label: 'Send Alert',
-          color: AppColors.red,
-          backgroundColor: AppColors.red.withOpacity(0.15),
-          onTap: onSendAlert,
-        ),
-        _ActionTile(
-          icon: Icons.analytics_outlined,
-          label: 'View Analytics',
-          color: Colors.white70,
-          onTap: () {},
-        ),
-        _ActionTile(
-          icon: Icons.security,
-          label: 'Manage Security',
-          color: Colors.white70,
-          onTap: () {},
-        ),
-      ],
-    );
-  }
-
-  Widget _buildManagedEvents(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Managed Events',
-          style: GoogleFonts.montserrat(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
-        ),
-        const SizedBox(height: 12),
-        _EventCard(
-          title: 'Annual Tech Summit',
-          code: 'E-5024',
-          date: '02/26/2024',
-          icon: Icons.calendar_today,
-          iconColor: AppColors.blue,
-        ),
-        const SizedBox(height: 10),
-        _EventCard(
-          title: 'Music Fest 2024',
-          code: 'E-5022',
-          date: '08/15/2024',
-          icon: Icons.music_note,
-          iconColor: AppColors.orange,
-        ),
-        const SizedBox(height: 10),
-        _EventCard(
-          title: 'Gaming Expo',
-          code: 'E-5018',
-          date: '04/02/2024',
-          icon: Icons.sports_esports,
-          iconColor: AppColors.green,
-          status: 'Active',
-        ),
-      ],
-    );
-  }
-
-  Widget _buildLiveMap(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Live Event Map',
-          style: GoogleFonts.montserrat(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
-        ),
-        const SizedBox(height: 12),
-        GlassCard(
-          padding: EdgeInsets.zero,
-          borderRadius: 16,
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(16),
-            child: SizedBox(
-              height: 200,
-              child: Consumer<CrowdProvider>(
-                builder: (context, crowdProvider, _) {
-                  if (crowdProvider.isLoading) {
-                    return Center(
-                      child: CircularProgressIndicator(color: AppColors.softTealBlue),
-                    );
-                  }
-                  return CrowdHeatmap(
-                    crowdData: crowdProvider.crowdData,
-                    zones: DummyData.zones,
-                  );
-                },
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _ActionTile extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-  final Color? backgroundColor;
-  final VoidCallback onTap;
-
-  const _ActionTile({
-    required this.icon,
-    required this.label,
-    required this.color,
-    this.backgroundColor,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GlassCard(
-      onTap: onTap,
-      backgroundColor: backgroundColor,
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(icon, color: color, size: 28),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            label,
-            style: GoogleFonts.roboto(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: Colors.white,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 class _EventCard extends StatelessWidget {
@@ -647,6 +616,7 @@ class _EventCard extends StatelessWidget {
   final IconData icon;
   final Color iconColor;
   final String? status;
+  final Color? statusColor;
 
   const _EventCard({
     required this.title,
@@ -655,19 +625,21 @@ class _EventCard extends StatelessWidget {
     required this.icon,
     required this.iconColor,
     this.status,
+    this.statusColor,
   });
 
   @override
   Widget build(BuildContext context) {
-    return GlassCard(
-      padding: const EdgeInsets.all(14),
-      onTap: () {},
+    final sColor = statusColor ?? AppColors.green;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: iconColor.withOpacity(0.15),
+              color: iconColor.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(icon, color: iconColor, size: 22),
@@ -698,22 +670,24 @@ class _EventCard extends StatelessWidget {
           ),
           if (status != null)
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
               decoration: BoxDecoration(
-                color: AppColors.green.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(12),
+                color: sColor.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: sColor.withValues(alpha: 0.4),
+                  width: 1,
+                ),
               ),
               child: Text(
                 status!,
                 style: GoogleFonts.roboto(
-                  fontSize: 11,
+                  fontSize: 12,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.green,
+                  color: sColor,
                 ),
               ),
             ),
-          const SizedBox(width: 8),
-          const Icon(Icons.chevron_right, color: Colors.white38, size: 22),
         ],
       ),
     );
@@ -1125,139 +1099,145 @@ class _ProfileTab extends StatelessWidget {
 
                   // Title
                   Text(
-                    'Profile',
+                    'My Profile',
                     style: GoogleFonts.montserrat(
-                      fontSize: 24,
+                      fontSize: 22,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
                     ),
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Profile Avatar
-                  Container(
-                    width: 110,
-                    height: 110,
-                    decoration: BoxDecoration(
-                      color: AppColors.coolSteelBlue.withOpacity(0.5),
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: AppColors.coolSteelBlue,
-                        width: 3,
-                      ),
-                    ),
-                    child: Icon(
-                      Icons.person_outline,
-                      size: 55,
-                      color: Colors.white.withOpacity(0.7),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-
-                  // User Name
-                  Text(
-                    user.name,
-                    style: GoogleFonts.montserrat(
-                      fontSize: 26,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-
-                  // Email
-                  Text(
-                    user.email,
-                    style: GoogleFonts.roboto(
-                      fontSize: 15,
-                      color: Colors.white60,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Role Badge
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: AppColors.blue.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: AppColors.blue.withOpacity(0.5),
-                        width: 1.5,
-                      ),
-                    ),
-                    child: Text(
-                      user.roleDisplayName,
-                      style: GoogleFonts.roboto(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: AppColors.blue,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 36),
-
-                  // Edit Profile Button
-                  _ProfileActionButton(
-                    text: 'Edit Profile',
-                    icon: Icons.edit_outlined,
-                    backgroundColor: AppColors.green,
-                    textColor: Colors.white,
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Edit Profile coming soon')),
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Change Password Button
-                  _ProfileActionButton(
-                    text: 'Change Password',
-                    icon: Icons.lock_outline,
-                    backgroundColor: Colors.transparent,
-                    textColor: Colors.white,
-                    borderColor: Colors.white38,
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Change Password coming soon')),
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Logout Button
-                  _ProfileActionButton(
-                    text: 'Logout',
-                    icon: Icons.logout,
-                    backgroundColor: AppColors.red,
-                    textColor: Colors.white,
-                    onPressed: () async {
-                      await authProvider.logout();
-                      if (context.mounted) context.go('/login');
-                    },
                   ),
                   const SizedBox(height: 32),
 
-                  // Settings Section
+                  // Profile Card
                   GlassCard(
-                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
                     child: Column(
                       children: [
-                        _ProfileSettingsTile(
-                          icon: Icons.notifications_outlined,
-                          title: 'Push Notifications',
-                          subtitle: 'Receive alerts and updates',
-                          value: true,
-                          onChanged: (value) {},
+                        // Profile Avatar
+                        Container(
+                          width: 100,
+                          height: 100,
+                          decoration: BoxDecoration(
+                            color: Colors.transparent,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: Colors.white38,
+                              width: 2,
+                            ),
+                          ),
+                          child: const Icon(
+                            Icons.person_outline,
+                            size: 50,
+                            color: Colors.white60,
+                          ),
                         ),
-                        const Divider(color: Colors.white12, height: 1, indent: 16, endIndent: 16),
-                        _ProfileSettingsTile(
-                          icon: Icons.email_outlined,
-                          title: 'Email Notifications',
-                          subtitle: 'Receive event summaries',
-                          value: true,
-                          onChanged: (value) {},
+                        const SizedBox(height: 20),
+
+                        // User Name
+                        Text(
+                          user.name,
+                          style: GoogleFonts.montserrat(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+
+                        // Email
+                        Text(
+                          user.email,
+                          style: GoogleFonts.roboto(
+                            fontSize: 14,
+                            color: Colors.white60,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+
+                        // Role
+                        Text(
+                          user.roleDisplayName,
+                          style: GoogleFonts.roboto(
+                            fontSize: 14,
+                            color: Colors.white54,
+                          ),
+                        ),
+                        const SizedBox(height: 28),
+
+                        // Edit Profile Button (Blue)
+                        SizedBox(
+                          width: double.infinity,
+                          height: 52,
+                          child: ElevatedButton(
+                            onPressed: () => ProfileDialogs.showEditProfile(context, authProvider),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.blue,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              elevation: 0,
+                            ),
+                            child: Text(
+                              'Edit Profile',
+                              style: GoogleFonts.roboto(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+
+                        // Change Password Button (Outlined)
+                        SizedBox(
+                          width: double.infinity,
+                          height: 52,
+                          child: OutlinedButton(
+                            onPressed: () => ProfileDialogs.showChangePassword(context, authProvider),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: Colors.white,
+                              side: const BorderSide(color: Colors.white38, width: 1.5),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: Text(
+                              'Change Password',
+                              style: GoogleFonts.roboto(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+
+                        // Logout Button (Salmon/Pink-Red)
+                        SizedBox(
+                          width: double.infinity,
+                          height: 52,
+                          child: ElevatedButton(
+                            onPressed: () async {
+                              await authProvider.logout();
+                              if (context.mounted) context.go('/login');
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFE8706A),
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              elevation: 0,
+                            ),
+                            child: Text(
+                              'Logout',
+                              style: GoogleFonts.roboto(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
                         ),
                       ],
                     ),
@@ -1272,120 +1252,3 @@ class _ProfileTab extends StatelessWidget {
   }
 }
 
-class _ProfileActionButton extends StatelessWidget {
-  final String text;
-  final IconData icon;
-  final Color backgroundColor;
-  final Color textColor;
-  final Color? borderColor;
-  final VoidCallback onPressed;
-
-  const _ProfileActionButton({
-    required this.text,
-    required this.icon,
-    required this.backgroundColor,
-    required this.textColor,
-    this.borderColor,
-    required this.onPressed,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onPressed,
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        decoration: BoxDecoration(
-          color: backgroundColor,
-          borderRadius: BorderRadius.circular(12),
-          border: borderColor != null
-              ? Border.all(color: borderColor!, width: 1.5)
-              : null,
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: textColor, size: 20),
-            const SizedBox(width: 10),
-            Text(
-              text,
-              style: GoogleFonts.roboto(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: textColor,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ProfileSettingsTile extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final bool value;
-  final ValueChanged<bool> onChanged;
-
-  const _ProfileSettingsTile({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.value,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, color: Colors.white70, size: 22),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: GoogleFonts.roboto(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.white,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  style: GoogleFonts.roboto(
-                    fontSize: 12,
-                    color: Colors.white54,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Switch(
-            value: value,
-            onChanged: onChanged,
-            activeColor: Colors.white,
-            activeTrackColor: AppColors.green,
-            inactiveThumbColor: Colors.white70,
-            inactiveTrackColor: Colors.white24,
-          ),
-        ],
-      ),
-    );
-  }
-}
