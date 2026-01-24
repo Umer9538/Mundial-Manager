@@ -1,0 +1,33 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Profile images - users can read/write their own
+    match /profile_images/{userId}.jpg {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Incident images - staff can read, authenticated users can write
+    match /incident_images/{incidentId}/{fileName} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+
+    // Venue images - all authenticated users can read, organizers can write
+    match /venue_images/{venueId}/{fileName} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+
+    // Zone maps - all authenticated users can read, organizers can write
+    match /zone_maps/{venueId}/{zoneId}.png {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+  }
+}
