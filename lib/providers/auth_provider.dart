@@ -4,11 +4,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user.dart';
 import '../services/auth_service.dart';
 import '../services/notification_service.dart';
+import '../services/location_service.dart';
 import '../core/constants/constants.dart';
 
 class AuthProvider with ChangeNotifier {
   final AuthService _authService = AuthService();
   final NotificationService _notificationService = NotificationService();
+  final LocationService _locationService = LocationService();
 
   User? _currentUser;
   bool _isLoading = false;
@@ -235,10 +237,26 @@ class AuthProvider with ChangeNotifier {
   }
 
   // Toggle location sharing
+  bool get isLocationSharing => _locationService.isSharing;
+
   Future<void> toggleLocationSharing() async {
     if (_currentUser == null) return;
 
     final newValue = !_currentUser!.locationSharingEnabled;
+
+    if (newValue) {
+      // Start GPS sharing
+      final success = await _locationService.startSharing(_currentUser!.id);
+      if (!success) {
+        _errorMessage = 'Location permission denied. Please enable it in Settings.';
+        notifyListeners();
+        return;
+      }
+    } else {
+      // Stop GPS sharing
+      await _locationService.stopSharing();
+    }
+
     await updateProfile(locationSharingEnabled: newValue);
   }
 
