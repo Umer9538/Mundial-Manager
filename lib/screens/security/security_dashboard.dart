@@ -12,6 +12,8 @@ import '../../widgets/common/gradient_scaffold.dart';
 import '../../widgets/common/glass_card.dart';
 import '../../widgets/common/custom_button.dart';
 import '../../widgets/common/custom_text_field.dart';
+import '../../widgets/common/profile_dialogs.dart';
+import '../common/report_incident_screen.dart';
 import '../../widgets/map/crowd_heatmap.dart';
 import '../../core/utils/dummy_data.dart';
 
@@ -60,7 +62,14 @@ class _SecurityDashboardState extends State<SecurityDashboard> {
             _DashboardTab(
               isOnDuty: _isOnDuty,
               onToggleDuty: () => setState(() => _isOnDuty = !_isOnDuty),
-              onReportIncident: () => _showReportIncidentSheet(context),
+              onReportIncident: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const ReportIncidentScreen(),
+                  ),
+                );
+              },
             ),
             _MonitoringTab(),
             _AlertsTab(),
@@ -412,6 +421,35 @@ class _DashboardTab extends StatelessWidget {
                     const SizedBox(width: 8),
                     Icon(Icons.notifications_outlined, color: Colors.white, size: 24),
                   ],
+                ),
+                const SizedBox(height: 20),
+
+                // Welcome Message
+                Builder(
+                  builder: (context) {
+                    final userName = Provider.of<AuthProvider>(context, listen: false)
+                        .currentUser?.name ?? 'Officer';
+                    return Row(
+                      children: [
+                        Text(
+                          'Welcome, ',
+                          style: GoogleFonts.poppins(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w400,
+                            color: Colors.white70,
+                          ),
+                        ),
+                        Text(
+                          userName.split(' ').first,
+                          style: GoogleFonts.poppins(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.softTealBlue,
+                          ),
+                        ),
+                      ],
+                    );
+                  },
                 ),
                 const SizedBox(height: 24),
                 // Quick Actions Grid
@@ -1009,15 +1047,7 @@ class _AlertsTab extends StatelessWidget {
   }
 }
 
-class _ProfileTab extends StatefulWidget {
-  @override
-  State<_ProfileTab> createState() => _ProfileTabState();
-}
-
-class _ProfileTabState extends State<_ProfileTab> {
-  bool _locationSharing = true;
-  bool _pushNotifications = true;
-
+class _ProfileTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GradientScaffold(
@@ -1032,210 +1062,141 @@ class _ProfileTabState extends State<_ProfileTab> {
               child: Column(
                 children: [
                   const SizedBox(height: 16),
-                  // Profile Header
                   Text(
-                    'Profile',
-                    style: GoogleFonts.montserrat(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  // Avatar
-                  Container(
-                    width: 100,
-                    height: 100,
-                    decoration: BoxDecoration(
-                      color: const Color(0x1AFFFFFF),
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: AppColors.softTealBlue.withOpacity(0.5),
-                        width: 3,
-                      ),
-                    ),
-                    child: const Icon(Icons.security, size: 50, color: Colors.white70),
-                  ),
-                  const SizedBox(height: 16),
-                  // Name
-                  Text(
-                    user.name,
+                    'My Profile',
                     style: GoogleFonts.montserrat(
                       fontSize: 22,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
                     ),
                   ),
-                  // Email
-                  Text(
-                    user.email,
-                    style: GoogleFonts.roboto(fontSize: 14, color: Colors.white60),
-                  ),
-                  const SizedBox(height: 8),
-                  // Role Badge
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: AppColors.orange.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      'Security Team',
-                      style: GoogleFonts.roboto(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.orange,
-                      ),
-                    ),
-                  ),
                   const SizedBox(height: 32),
 
-                  // Action Buttons
-                  CustomButton.primary(
-                    text: 'Edit Profile',
-                    icon: Icons.edit_outlined,
-                    onPressed: () {
-                      // TODO: Implement edit profile
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  CustomButton.secondary(
-                    text: 'Change Password',
-                    icon: Icons.lock_outline,
-                    onPressed: () {
-                      // TODO: Implement change password
-                    },
-                  ),
-                  const SizedBox(height: 32),
-
-                  // Settings Section
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      'Settings',
-                      style: GoogleFonts.montserrat(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Location Sharing Toggle
                   GlassCard(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    child: Row(
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+                    child: Column(
                       children: [
                         Container(
-                          padding: const EdgeInsets.all(8),
+                          width: 100,
+                          height: 100,
                           decoration: BoxDecoration(
-                            color: AppColors.softTealBlue.withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(8),
+                            color: Colors.transparent,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: Colors.white38,
+                              width: 2,
+                            ),
                           ),
-                          child: Icon(
-                            Icons.location_on_outlined,
-                            color: AppColors.softTealBlue,
-                            size: 22,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Location Sharing',
-                                style: GoogleFonts.roboto(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.white,
-                                ),
-                              ),
-                              Text(
-                                'Share your location with team',
-                                style: GoogleFonts.roboto(
-                                  fontSize: 12,
-                                  color: Colors.white54,
-                                ),
-                              ),
-                            ],
+                          child: const Icon(
+                            Icons.person_outline,
+                            size: 50,
+                            color: Colors.white60,
                           ),
                         ),
-                        Switch(
-                          value: _locationSharing,
-                          onChanged: (value) {
-                            setState(() => _locationSharing = value);
-                          },
-                          activeColor: AppColors.softTealBlue,
-                          activeTrackColor: AppColors.softTealBlue.withOpacity(0.3),
+                        const SizedBox(height: 20),
+                        Text(
+                          user.name,
+                          style: GoogleFonts.montserrat(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          user.email,
+                          style: GoogleFonts.roboto(
+                            fontSize: 14,
+                            color: Colors.white60,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          user.roleDisplayName,
+                          style: GoogleFonts.roboto(
+                            fontSize: 14,
+                            color: Colors.white54,
+                          ),
+                        ),
+                        const SizedBox(height: 28),
+
+                        // Edit Profile Button
+                        SizedBox(
+                          width: double.infinity,
+                          height: 52,
+                          child: ElevatedButton(
+                            onPressed: () => ProfileDialogs.showEditProfile(context, authProvider),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.blue,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              elevation: 0,
+                            ),
+                            child: Text(
+                              'Edit Profile',
+                              style: GoogleFonts.roboto(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+
+                        // Change Password Button
+                        SizedBox(
+                          width: double.infinity,
+                          height: 52,
+                          child: OutlinedButton(
+                            onPressed: () => ProfileDialogs.showChangePassword(context, authProvider),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: Colors.white,
+                              side: const BorderSide(color: Colors.white38, width: 1.5),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: Text(
+                              'Change Password',
+                              style: GoogleFonts.roboto(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+
+                        // Logout Button
+                        SizedBox(
+                          width: double.infinity,
+                          height: 52,
+                          child: ElevatedButton(
+                            onPressed: () async {
+                              await authProvider.logout();
+                              if (context.mounted) context.go('/login');
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFE8706A),
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              elevation: 0,
+                            ),
+                            child: Text(
+                              'Logout',
+                              style: GoogleFonts.roboto(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
                         ),
                       ],
                     ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Push Notifications Toggle
-                  GlassCard(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: AppColors.softTealBlue.withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Icon(
-                            Icons.notifications_outlined,
-                            color: AppColors.softTealBlue,
-                            size: 22,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Push Notifications',
-                                style: GoogleFonts.roboto(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.white,
-                                ),
-                              ),
-                              Text(
-                                'Receive alerts and updates',
-                                style: GoogleFonts.roboto(
-                                  fontSize: 12,
-                                  color: Colors.white54,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Switch(
-                          value: _pushNotifications,
-                          onChanged: (value) {
-                            setState(() => _pushNotifications = value);
-                          },
-                          activeColor: AppColors.softTealBlue,
-                          activeTrackColor: AppColors.softTealBlue.withOpacity(0.3),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 32),
-
-                  // Logout Button
-                  CustomButton.danger(
-                    text: 'Logout',
-                    icon: Icons.logout,
-                    onPressed: () async {
-                      await authProvider.logout();
-                      if (context.mounted) context.go('/login');
-                    },
                   ),
                 ],
               ),
