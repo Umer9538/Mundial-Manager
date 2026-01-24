@@ -45,5 +45,15 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Mundial Manager needs your location to help with crowd management and provide safety updates.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Mundial Manager needs your location to share with event staff for safety purposes.</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>Mundial Manager uses your location in the background to share with event staff for safety.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Mundial Manager needs camera access to take photos for incident reports.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Mundial Manager needs photo library access to attach photos to incident reports.</string>
 </dict>
 </plist>
