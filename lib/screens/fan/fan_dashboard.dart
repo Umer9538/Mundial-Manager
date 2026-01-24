@@ -12,6 +12,7 @@ import '../../widgets/common/custom_button.dart';
 import '../../widgets/map/crowd_heatmap.dart';
 import '../../widgets/cards/alert_card.dart';
 import '../../core/utils/dummy_data.dart';
+import '../common/report_incident_screen.dart';
 import 'venue_map_screen.dart';
 import 'notifications_screen.dart';
 import 'fan_profile_screen.dart';
@@ -270,7 +271,7 @@ class _HomeTab extends StatelessWidget {
                       children: [
                         Text(
                           'Welcome, ',
-                          style: GoogleFonts.roboto(
+                          style: GoogleFonts.poppins(
                             fontSize: 26,
                             fontWeight: FontWeight.w400,
                             color: Colors.white70,
@@ -278,7 +279,7 @@ class _HomeTab extends StatelessWidget {
                         ),
                         Text(
                           userName.split(' ').first,
-                          style: GoogleFonts.montserrat(
+                          style: GoogleFonts.poppins(
                             fontSize: 26,
                             fontWeight: FontWeight.bold,
                             color: AppColors.softTealBlue,
@@ -477,14 +478,65 @@ class _HomeTab extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         CustomButton.warning(
-          text: 'Share My Location',
-          icon: Icons.share_location,
+          text: 'Report Incident',
+          icon: Icons.warning_amber,
           onPressed: () {
-            // TODO: Implement location sharing
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: const Text('Location sharing enabled'),
-                backgroundColor: AppColors.green,
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const ReportIncidentScreen(),
+              ),
+            );
+          },
+        ),
+        const SizedBox(height: 12),
+        Consumer<AuthProvider>(
+          builder: (context, authProvider, _) {
+            final isSharing = authProvider.currentUser?.locationSharingEnabled ?? false;
+            return GestureDetector(
+              onTap: () async {
+                await authProvider.toggleLocationSharing();
+                if (context.mounted && authProvider.errorMessage != null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(authProvider.errorMessage!),
+                      backgroundColor: AppColors.red,
+                    ),
+                  );
+                }
+              },
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                decoration: BoxDecoration(
+                  color: isSharing
+                      ? AppColors.green.withOpacity(0.2)
+                      : Colors.white.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: isSharing ? AppColors.green : Colors.white24,
+                    width: 1.5,
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      isSharing ? Icons.location_on : Icons.location_off_outlined,
+                      color: isSharing ? AppColors.green : Colors.white70,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      isSharing ? 'Location Sharing: ON' : 'Share My Location',
+                      style: GoogleFonts.roboto(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: isSharing ? AppColors.green : Colors.white70,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             );
           },
