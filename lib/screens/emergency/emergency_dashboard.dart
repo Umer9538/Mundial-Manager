@@ -13,6 +13,7 @@ import '../../providers/auth_provider.dart';
 import '../../widgets/common/gradient_scaffold.dart';
 import '../../widgets/common/glass_card.dart';
 import '../../widgets/common/custom_button.dart';
+import '../../widgets/common/profile_dialogs.dart';
 import '../../widgets/map/incident_marker.dart';
 
 class EmergencyDashboard extends StatefulWidget {
@@ -216,10 +217,17 @@ class _BadgeCount extends StatelessWidget {
 }
 
 // ==================== HOME TAB ====================
-class _HomeTab extends StatelessWidget {
+class _HomeTab extends StatefulWidget {
   final Function(int) onNavigate;
 
   const _HomeTab({required this.onNavigate});
+
+  @override
+  State<_HomeTab> createState() => _HomeTabState();
+}
+
+class _HomeTabState extends State<_HomeTab> {
+  int _selectedIncidentIndex = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -228,360 +236,240 @@ class _HomeTab extends StatelessWidget {
         builder: (context, incidentProvider, _) {
           if (incidentProvider.isLoading) {
             return Center(
-              child: CircularProgressIndicator(
-                color: AppColors.red,
-              ),
+              child: CircularProgressIndicator(color: AppColors.red),
             );
           }
 
           final activeIncidents = incidentProvider.activeIncidents;
-          final criticalIncidents = incidentProvider.criticalIncidents;
 
-          return RefreshIndicator(
-            onRefresh: incidentProvider.refresh,
-            color: AppColors.red,
-            backgroundColor: AppColors.deepNavyBlue,
-            child: SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
-              child: SafeArea(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 16),
-                    // Header Row
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: AppColors.red.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Icon(
-                            Icons.emergency,
-                            color: AppColors.red,
-                            size: 20,
-                          ),
+          return SafeArea(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 8),
+                // Top Bar: hamburger + title + bell
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.menu, color: Colors.white),
+                        onPressed: () {},
+                      ),
+                      const Spacer(),
+                      Text(
+                        'King Fahd Stadium',
+                        style: GoogleFonts.montserrat(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
                         ),
-                        const SizedBox(width: 12),
-                        Text(
-                          'Emergency Services',
-                          style: GoogleFonts.montserrat(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                        const Spacer(),
-                        Consumer<IncidentProvider>(
-                          builder: (context, incidentProvider, _) {
-                            final criticalCount = incidentProvider.criticalIncidents.length;
-                            return GestureDetector(
-                              onTap: () => onNavigate(1),
-                              child: Stack(
-                                clipBehavior: Clip.none,
-                                children: [
-                                  Icon(Icons.warning_amber, color: Colors.white, size: 24),
-                                  if (criticalCount > 0)
-                                    Positioned(
-                                      right: -6,
-                                      top: -4,
-                                      child: _BadgeCount(count: criticalCount),
-                                    ),
-                                ],
-                              ),
-                            );
-                          },
-                        ),
-                      ],
+                      ),
+                      const Spacer(),
+                      IconButton(
+                        icon: const Icon(Icons.notifications_outlined, color: Colors.white),
+                        onPressed: () => widget.onNavigate(1),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Emergency Dashboard title
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Text(
+                    'Emergency Dashboard',
+                    style: GoogleFonts.montserrat(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
                     ),
-                    const SizedBox(height: 24),
-                    // Venue Header
-                    _buildVenueHeader(),
-                    const SizedBox(height: 24),
+                  ),
+                ),
+                const SizedBox(height: 8),
 
-                    // Stats Row
-                    _buildStatsRow(incidentProvider),
-                    const SizedBox(height: 24),
+                // Welcome Message
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Builder(
+                    builder: (context) {
+                      final userName = Provider.of<AuthProvider>(context, listen: false)
+                          .currentUser?.name ?? 'Responder';
+                      return Row(
+                        children: [
+                          Text(
+                            'Welcome, ',
+                            style: GoogleFonts.poppins(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w400,
+                              color: Colors.white70,
+                            ),
+                          ),
+                          Text(
+                            userName.split(' ').first,
+                            style: GoogleFonts.poppins(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.softTealBlue,
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 16),
 
-                    // Active Incidents Section
-                    if (activeIncidents.isNotEmpty) ...[
-                      _buildSectionHeader('Active Incidents', activeIncidents.length),
-                      const SizedBox(height: 12),
-                      ...activeIncidents.take(3).map((incident) => Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: _IncidentCard(
-                          incident: incident,
-                          onAcknowledge: () => _acknowledgeIncident(context, incident, incidentProvider),
-                          onDispatch: () => _dispatchIncident(context, incident, incidentProvider),
+                // Horizontal scrollable incident cards
+                if (activeIncidents.isNotEmpty)
+                  SizedBox(
+                    height: 120,
+                    child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      itemCount: activeIncidents.length,
+                      itemBuilder: (context, index) {
+                        final incident = activeIncidents[index];
+                        final isSelected = index == _selectedIncidentIndex;
+                        return GestureDetector(
+                          onTap: () => setState(() => _selectedIncidentIndex = index),
+                          child: _HorizontalIncidentCard(
+                            incident: incident,
+                            isSelected: isSelected,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                const SizedBox(height: 8),
+
+                // Map
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: FlutterMap(
+                        options: MapOptions(
+                          initialCenter: DummyData.venue.coordinates,
+                          initialZoom: AppConstants.defaultZoom,
                         ),
-                      )),
-                      if (activeIncidents.length > 3)
-                        Center(
-                          child: TextButton(
-                            onPressed: () => onNavigate(1),
+                        children: [
+                          TileLayer(
+                            urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                            userAgentPackageName: 'com.mundialmanager.app',
+                          ),
+                          IncidentMarkers(
+                            incidents: activeIncidents,
+                            onIncidentTap: (incident) {},
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                // Bottom Action Buttons
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: SizedBox(
+                          height: 48,
+                          child: ElevatedButton(
+                            onPressed: () {
+                              if (activeIncidents.isNotEmpty) {
+                                _acknowledgeIncident(
+                                  context,
+                                  activeIncidents[_selectedIncidentIndex],
+                                  incidentProvider,
+                                );
+                              }
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.coolSteelBlue,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              elevation: 0,
+                            ),
                             child: Text(
-                              'View All Incidents',
+                              'Acknowledge',
                               style: GoogleFonts.roboto(
-                                color: AppColors.red,
+                                fontSize: 14,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
                           ),
                         ),
-                    ] else ...[
-                      _buildNoIncidentsCard(),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: SizedBox(
+                          height: 48,
+                          child: ElevatedButton(
+                            onPressed: () {
+                              if (activeIncidents.isNotEmpty) {
+                                _dispatchIncident(
+                                  context,
+                                  activeIncidents[_selectedIncidentIndex],
+                                  incidentProvider,
+                                );
+                              }
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.green,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              elevation: 0,
+                            ),
+                            child: Text(
+                              'Dispatch',
+                              style: GoogleFonts.roboto(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: SizedBox(
+                          height: 48,
+                          child: ElevatedButton(
+                            onPressed: () => _showEvacuationDialog(context),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.red,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              elevation: 0,
+                            ),
+                            child: Text(
+                              'Evacuate',
+                              style: GoogleFonts.roboto(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
                     ],
-                    const SizedBox(height: 24),
-
-                    // Quick Actions
-                    _buildQuickActions(context),
-                  ],
+                  ),
                 ),
-              ),
+              ],
             ),
           );
         },
       ),
-    );
-  }
-
-  Widget _buildVenueHeader() {
-    return GlassCard(
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppColors.red.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(
-              Icons.stadium,
-              color: AppColors.red,
-              size: 28,
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'King Fahad Stadium',
-                  style: GoogleFonts.montserrat(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Container(
-                      width: 8,
-                      height: 8,
-                      decoration: BoxDecoration(
-                        color: AppColors.green,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      'On Duty',
-                      style: GoogleFonts.roboto(
-                        fontSize: 13,
-                        color: AppColors.green,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: AppColors.red.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: AppColors.red.withOpacity(0.5),
-                width: 1,
-              ),
-            ),
-            child: Text(
-              'ACTIVE',
-              style: GoogleFonts.roboto(
-                fontSize: 11,
-                fontWeight: FontWeight.bold,
-                color: AppColors.red,
-                letterSpacing: 1,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatsRow(IncidentProvider incidentProvider) {
-    return Row(
-      children: [
-        Expanded(
-          child: _StatCard(
-            title: 'Active',
-            value: '${incidentProvider.activeIncidents.length}',
-            icon: Icons.emergency,
-            color: AppColors.red,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _StatCard(
-            title: 'Critical',
-            value: '${incidentProvider.criticalIncidents.length}',
-            icon: Icons.priority_high,
-            color: AppColors.orange,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _StatCard(
-            title: 'Resolved',
-            value: '${incidentProvider.resolvedIncidents.length}',
-            icon: Icons.check_circle,
-            color: AppColors.green,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSectionHeader(String title, int count) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          title,
-          style: GoogleFonts.montserrat(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
-        ),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-          decoration: BoxDecoration(
-            color: AppColors.red.withOpacity(0.2),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Text(
-            count.toString(),
-            style: GoogleFonts.roboto(
-              fontSize: 13,
-              fontWeight: FontWeight.bold,
-              color: AppColors.red,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildNoIncidentsCard() {
-    return GlassCard(
-      padding: const EdgeInsets.all(32),
-      child: Center(
-        child: Column(
-          children: [
-            Icon(
-              Icons.check_circle_outline,
-              size: 48,
-              color: AppColors.green,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'No Active Incidents',
-              style: GoogleFonts.montserrat(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'All clear. No emergencies reported.',
-              style: GoogleFonts.roboto(
-                fontSize: 14,
-                color: Colors.white54,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildQuickActions(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Quick Actions',
-          style: GoogleFonts.montserrat(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: _ActionTile(
-                icon: Icons.local_hospital,
-                label: 'Medical',
-                color: AppColors.red,
-                onTap: () => _triggerEmergencyAction(context, 'Medical'),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _ActionTile(
-                icon: Icons.local_fire_department,
-                label: 'Fire',
-                color: AppColors.orange,
-                onTap: () => _triggerEmergencyAction(context, 'Fire'),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: _ActionTile(
-                icon: Icons.security,
-                label: 'Security',
-                color: AppColors.blue,
-                onTap: () => _triggerEmergencyAction(context, 'Security'),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _ActionTile(
-                icon: Icons.exit_to_app,
-                label: 'Evacuate',
-                color: AppColors.yellow,
-                onTap: () => _showEvacuationDialog(context),
-              ),
-            ),
-          ],
-        ),
-      ],
     );
   }
 
@@ -615,15 +503,6 @@ class _HomeTab extends StatelessWidget {
     }
   }
 
-  void _triggerEmergencyAction(BuildContext context, String type) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('$type emergency response initiated'),
-        backgroundColor: AppColors.red,
-      ),
-    );
-  }
-
   void _showEvacuationDialog(BuildContext context) {
     showDialog(
       context: context,
@@ -637,16 +516,13 @@ class _HomeTab extends StatelessWidget {
           ),
         ),
         content: Text(
-          'This will trigger an evacuation alert for all attendees in the venue. This action cannot be undone.',
+          'This will trigger an evacuation alert for all attendees in the venue.',
           style: GoogleFonts.roboto(color: Colors.white70),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text(
-              'Cancel',
-              style: GoogleFonts.roboto(color: Colors.white54),
-            ),
+            child: Text('Cancel', style: GoogleFonts.roboto(color: Colors.white54)),
           ),
           ElevatedButton(
             onPressed: () {
@@ -658,20 +534,121 @@ class _HomeTab extends StatelessWidget {
                 ),
               );
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.red,
-            ),
-            child: Text(
-              'Evacuate',
-              style: GoogleFonts.roboto(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.red),
+            child: Text('Evacuate', style: GoogleFonts.roboto(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// Horizontal incident card for the Emergency Dashboard
+class _HorizontalIncidentCard extends StatelessWidget {
+  final dynamic incident;
+  final bool isSelected;
+
+  const _HorizontalIncidentCard({
+    required this.incident,
+    required this.isSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _getSeverityColor(incident.severity);
+    final minutes = incident.timeSinceCreation.inMinutes;
+    final seconds = incident.timeSinceCreation.inSeconds % 60;
+
+    return Container(
+      width: 160,
+      margin: const EdgeInsets.only(right: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1A3A5C),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: isSelected ? color : Colors.white12,
+          width: isSelected ? 2 : 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Icon + Timer
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Icon(_getIcon(incident.type), color: color, size: 22),
+              Text(
+                '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}',
+                style: GoogleFonts.roboto(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
               ),
+            ],
+          ),
+          const Spacer(),
+          // Type
+          Text(
+            incident.typeDisplayName,
+            style: GoogleFonts.roboto(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 2),
+          // Zone
+          Text(
+            'Zone ${incident.id.substring(incident.id.length - 1).toUpperCase()}',
+            style: GoogleFonts.roboto(
+              fontSize: 12,
+              color: Colors.white54,
+            ),
+          ),
+          const SizedBox(height: 2),
+          // ETA
+          Text(
+            'ETA: ${(minutes ~/ 2 + 1)}min',
+            style: GoogleFonts.roboto(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: color,
             ),
           ),
         ],
       ),
     );
+  }
+
+  Color _getSeverityColor(String severity) {
+    switch (severity.toLowerCase()) {
+      case 'critical':
+        return AppColors.red;
+      case 'high':
+        return AppColors.orange;
+      case 'medium':
+        return AppColors.yellow;
+      default:
+        return AppColors.blue;
+    }
+  }
+
+  IconData _getIcon(String type) {
+    switch (type.toLowerCase()) {
+      case 'medical':
+        return Icons.local_hospital;
+      case 'fire':
+        return Icons.local_fire_department;
+      case 'security':
+        return Icons.security;
+      case 'overcrowding':
+        return Icons.groups;
+      default:
+        return Icons.warning;
+    }
   }
 }
 
@@ -1133,16 +1110,8 @@ class _MapTab extends StatelessWidget {
 }
 
 // ==================== PROFILE TAB ====================
-class _ProfileTab extends StatefulWidget {
+class _ProfileTab extends StatelessWidget {
   const _ProfileTab();
-
-  @override
-  State<_ProfileTab> createState() => _ProfileTabState();
-}
-
-class _ProfileTabState extends State<_ProfileTab> {
-  bool _locationSharing = true;
-  bool _pushNotifications = true;
 
   @override
   Widget build(BuildContext context) {
@@ -1158,265 +1127,141 @@ class _ProfileTabState extends State<_ProfileTab> {
               child: Column(
                 children: [
                   const SizedBox(height: 16),
-                  // Profile Header
                   Text(
-                    'Profile',
-                    style: GoogleFonts.montserrat(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Profile Avatar
-                  Container(
-                    width: 100,
-                    height: 100,
-                    decoration: BoxDecoration(
-                      color: AppColors.red.withOpacity(0.2),
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: AppColors.red.withOpacity(0.5),
-                        width: 3,
-                      ),
-                    ),
-                    child: const Icon(
-                      Icons.emergency,
-                      size: 50,
-                      color: Colors.white70,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // User Name
-                  Text(
-                    user.name,
+                    'My Profile',
                     style: GoogleFonts.montserrat(
                       fontSize: 22,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
                     ),
                   ),
-                  // Email
-                  Text(
-                    user.email,
-                    style: GoogleFonts.roboto(
-                      fontSize: 14,
-                      color: Colors.white60,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-
-                  // Role Badge
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: AppColors.red.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: AppColors.red.withOpacity(0.5),
-                        width: 1,
-                      ),
-                    ),
-                    child: Text(
-                      'Emergency Responder',
-                      style: GoogleFonts.roboto(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.red,
-                      ),
-                    ),
-                  ),
                   const SizedBox(height: 32),
 
-                  // Action Buttons
-                  CustomButton.primary(
-                    text: 'Edit Profile',
-                    icon: Icons.edit_outlined,
-                    onPressed: () {
-                      // TODO: Implement edit profile
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  CustomButton.secondary(
-                    text: 'Change Password',
-                    icon: Icons.lock_outline,
-                    onPressed: () {
-                      // TODO: Implement change password
-                    },
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Stats Card
                   GlassCard(
-                    padding: const EdgeInsets.all(20),
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
                     child: Column(
                       children: [
+                        Container(
+                          width: 100,
+                          height: 100,
+                          decoration: BoxDecoration(
+                            color: Colors.transparent,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: Colors.white38,
+                              width: 2,
+                            ),
+                          ),
+                          child: const Icon(
+                            Icons.person_outline,
+                            size: 50,
+                            color: Colors.white60,
+                          ),
+                        ),
+                        const SizedBox(height: 20),
                         Text(
-                          'Today\'s Stats',
+                          user.name,
                           style: GoogleFonts.montserrat(
-                            fontSize: 16,
+                            fontSize: 24,
                             fontWeight: FontWeight.bold,
                             color: Colors.white,
                           ),
                         ),
-                        const SizedBox(height: 16),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _ProfileStat(
-                                label: 'Responded',
-                                value: '12',
-                                icon: Icons.check_circle,
-                                color: AppColors.green,
+                        const SizedBox(height: 6),
+                        Text(
+                          user.email,
+                          style: GoogleFonts.roboto(
+                            fontSize: 14,
+                            color: Colors.white60,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          user.roleDisplayName,
+                          style: GoogleFonts.roboto(
+                            fontSize: 14,
+                            color: Colors.white54,
+                          ),
+                        ),
+                        const SizedBox(height: 28),
+
+                        // Edit Profile Button
+                        SizedBox(
+                          width: double.infinity,
+                          height: 52,
+                          child: ElevatedButton(
+                            onPressed: () => ProfileDialogs.showEditProfile(context, authProvider),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.blue,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              elevation: 0,
+                            ),
+                            child: Text(
+                              'Edit Profile',
+                              style: GoogleFonts.roboto(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
-                            Expanded(
-                              child: _ProfileStat(
-                                label: 'Avg Response',
-                                value: '3.2m',
-                                icon: Icons.timer,
-                                color: AppColors.blue,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+
+                        // Change Password Button
+                        SizedBox(
+                          width: double.infinity,
+                          height: 52,
+                          child: OutlinedButton(
+                            onPressed: () => ProfileDialogs.showChangePassword(context, authProvider),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: Colors.white,
+                              side: const BorderSide(color: Colors.white38, width: 1.5),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
                               ),
                             ),
-                          ],
+                            child: Text(
+                              'Change Password',
+                              style: GoogleFonts.roboto(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+
+                        // Logout Button
+                        SizedBox(
+                          width: double.infinity,
+                          height: 52,
+                          child: ElevatedButton(
+                            onPressed: () async {
+                              await authProvider.logout();
+                              if (context.mounted) context.go('/login');
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFE8706A),
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              elevation: 0,
+                            ),
+                            child: Text(
+                              'Logout',
+                              style: GoogleFonts.roboto(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
                         ),
                       ],
                     ),
-                  ),
-                  const SizedBox(height: 32),
-
-                  // Settings Section
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      'Settings',
-                      style: GoogleFonts.montserrat(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Location Sharing Toggle
-                  GlassCard(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: AppColors.red.withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Icon(
-                            Icons.location_on_outlined,
-                            color: AppColors.red,
-                            size: 22,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Location Sharing',
-                                style: GoogleFonts.roboto(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.white,
-                                ),
-                              ),
-                              Text(
-                                'Share your location with team',
-                                style: GoogleFonts.roboto(
-                                  fontSize: 12,
-                                  color: Colors.white54,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Switch(
-                          value: _locationSharing,
-                          onChanged: (value) {
-                            setState(() => _locationSharing = value);
-                          },
-                          activeColor: AppColors.red,
-                          activeTrackColor: AppColors.red.withOpacity(0.3),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Push Notifications Toggle
-                  GlassCard(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: AppColors.red.withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Icon(
-                            Icons.notifications_outlined,
-                            color: AppColors.red,
-                            size: 22,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Push Notifications',
-                                style: GoogleFonts.roboto(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.white,
-                                ),
-                              ),
-                              Text(
-                                'Receive emergency alerts',
-                                style: GoogleFonts.roboto(
-                                  fontSize: 12,
-                                  color: Colors.white54,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Switch(
-                          value: _pushNotifications,
-                          onChanged: (value) {
-                            setState(() => _pushNotifications = value);
-                          },
-                          activeColor: AppColors.red,
-                          activeTrackColor: AppColors.red.withOpacity(0.3),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 32),
-
-                  // Logout Button
-                  CustomButton.danger(
-                    text: 'Logout',
-                    icon: Icons.logout,
-                    onPressed: () async {
-                      await authProvider.logout();
-                      if (context.mounted) {
-                        context.go('/login');
-                      }
-                    },
                   ),
                 ],
               ),
@@ -1430,47 +1275,6 @@ class _ProfileTabState extends State<_ProfileTab> {
 
 // ==================== HELPER WIDGETS ====================
 
-class _StatCard extends StatelessWidget {
-  final String title;
-  final String value;
-  final IconData icon;
-  final Color color;
-
-  const _StatCard({
-    required this.title,
-    required this.value,
-    required this.icon,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GlassCard(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        children: [
-          Icon(icon, color: color, size: 24),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: GoogleFonts.montserrat(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
-          ),
-          Text(
-            title,
-            style: GoogleFonts.roboto(
-              fontSize: 12,
-              color: Colors.white54,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 class _IncidentCard extends StatelessWidget {
   final dynamic incident;
@@ -1662,50 +1466,6 @@ class _SmallButton extends StatelessWidget {
   }
 }
 
-class _ActionTile extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-  final VoidCallback onTap;
-
-  const _ActionTile({
-    required this.icon,
-    required this.label,
-    required this.color,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: GlassCard(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(icon, color: color, size: 28),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              label,
-              style: GoogleFonts.roboto(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: Colors.white,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
 
 class _LegendItem extends StatelessWidget {
   final String label;
@@ -1808,41 +1568,3 @@ class _DetailRow extends StatelessWidget {
   }
 }
 
-class _ProfileStat extends StatelessWidget {
-  final String label;
-  final String value;
-  final IconData icon;
-  final Color color;
-
-  const _ProfileStat({
-    required this.label,
-    required this.value,
-    required this.icon,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Icon(icon, color: color, size: 28),
-        const SizedBox(height: 8),
-        Text(
-          value,
-          style: GoogleFonts.montserrat(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
-        ),
-        Text(
-          label,
-          style: GoogleFonts.roboto(
-            fontSize: 12,
-            color: Colors.white54,
-          ),
-        ),
-      ],
-    );
-  }
-}
