@@ -90,7 +90,7 @@ class _CrowdHeatmapState extends State<CrowdHeatmap> {
           }).toList(),
         ),
 
-        // Zone Labels
+        // Zone Labels - compact chips to avoid overlap
         MarkerLayer(
           markers: widget.zones.map((zone) {
             final crowdDensity = widget.crowdData.firstWhere(
@@ -106,44 +106,43 @@ class _CrowdHeatmapState extends State<CrowdHeatmap> {
               ),
             );
 
+            final color = _getZoneColor(zone.id);
+
             return Marker(
               point: zone.center,
-              width: 120,
-              height: 60,
+              width: 64,
+              height: 24,
               child: GestureDetector(
                 onTap: () => widget.onZoneTap?.call(zone),
                 child: Container(
                   decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(8),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.2),
-                        blurRadius: 4,
-                        spreadRadius: 1,
-                      ),
-                    ],
+                    color: const Color(0xDD0D1B2A),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: color, width: 1.5),
                   ),
-                  padding: const EdgeInsets.all(4),
-                  child: Column(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  child: Row(
                     mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text(
-                        zone.name,
-                        style: const TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
+                      Container(
+                        width: 6,
+                        height: 6,
+                        decoration: BoxDecoration(
+                          color: color,
+                          shape: BoxShape.circle,
                         ),
-                        textAlign: TextAlign.center,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                       ),
-                      Text(
-                        '${crowdDensity.occupancyPercentageRounded}%',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: _getZoneColor(zone.id),
+                      const SizedBox(width: 4),
+                      Flexible(
+                        child: Text(
+                          '${crowdDensity.occupancyPercentageRounded}%',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: color,
+                          ),
+                          maxLines: 1,
                         ),
                       ),
                     ],
