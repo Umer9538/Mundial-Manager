@@ -33,11 +33,11 @@
   static const double alertThresholdCritical = 4.5; // Critical warning
 
   // Map Settings
-  static const double defaultLat = 25.326622; // Lusail Stadium
-  static const double defaultLng = 51.491379;
-  static const double defaultZoom = 15.0;
-  static const double minZoom = 13.0;
-  static const double maxZoom = 18.0;
+  static const double defaultLat = 24.7257; // King Fahd International Stadium, Riyadh
+  static const double defaultLng = 46.8222;
+  static const double defaultZoom = 16.0;
+  static const double minZoom = 14.0;
+  static const double maxZoom = 19.0;
 
   // Real-time Update Intervals
   static const Duration crowdUpdateInterval = Duration(seconds: 10);

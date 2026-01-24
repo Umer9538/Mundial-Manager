@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class User {
   final String id;
   final String email;
@@ -23,21 +25,28 @@ class User {
     this.lastLogin,
   });
 
-  // Create user from JSON
+  // Helper to parse DateTime from various formats (Firestore Timestamp, String, or DateTime)
+  static DateTime? _parseDateTime(dynamic value) {
+    if (value == null) return null;
+    if (value is Timestamp) return value.toDate();
+    if (value is DateTime) return value;
+    if (value is String) return DateTime.tryParse(value);
+    return null;
+  }
+
+  // Create user from JSON/Firestore document
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
       id: json['id'] as String,
       email: json['email'] as String,
       name: json['name'] as String,
       role: json['role'] as String,
-      phoneNumber: json['phoneNumber'] as String?,
+      phoneNumber: json['phoneNumber'] as String? ?? json['phone'] as String?,
       profileImageUrl: json['profileImageUrl'] as String?,
       assignedZone: json['assignedZone'] as String?,
       locationSharingEnabled: json['locationSharingEnabled'] as bool? ?? false,
-      createdAt: DateTime.parse(json['createdAt'] as String),
-      lastLogin: json['lastLogin'] != null
-          ? DateTime.parse(json['lastLogin'] as String)
-          : null,
+      createdAt: _parseDateTime(json['createdAt']) ?? DateTime.now(),
+      lastLogin: _parseDateTime(json['lastLogin']),
     );
   }
 

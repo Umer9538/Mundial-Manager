@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:latlong2/latlong.dart';
 
 class Incident {
@@ -35,6 +36,14 @@ class Incident {
     this.imageUrls,
   });
 
+  static DateTime _parseDateTime(dynamic value) {
+    if (value == null) return DateTime.now();
+    if (value is Timestamp) return value.toDate();
+    if (value is DateTime) return value;
+    if (value is String) return DateTime.tryParse(value) ?? DateTime.now();
+    return DateTime.now();
+  }
+
   factory Incident.fromJson(Map<String, dynamic> json) {
     return Incident(
       id: json['id'] as String,
@@ -42,15 +51,15 @@ class Incident {
       reportedBy: json['reportedBy'] as String,
       reportedByName: json['reportedByName'] as String,
       location: LatLng(
-        json['latitude'] as double,
-        json['longitude'] as double,
+        (json['latitude'] as num).toDouble(),
+        (json['longitude'] as num).toDouble(),
       ),
       type: json['type'] as String,
       description: json['description'] as String,
       severity: json['severity'] as String,
       status: json['status'] as String,
-      createdAt: DateTime.parse(json['createdAt'] as String),
-      updatedAt: DateTime.parse(json['updatedAt'] as String),
+      createdAt: _parseDateTime(json['createdAt']),
+      updatedAt: _parseDateTime(json['updatedAt']),
       assignedTo: json['assignedTo'] as String?,
       assignedToName: json['assignedToName'] as String?,
       resolutionNotes: json['resolutionNotes'] as String?,

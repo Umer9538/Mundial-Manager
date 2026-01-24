@@ -11,9 +11,9 @@ import '../../models/crowd_density.dart';
 class DummyData {
   static const _uuid = Uuid();
 
-  // Lusail Stadium coordinates
-  static const double stadiumLat = 25.326622;
-  static const double stadiumLng = 51.491379;
+  // King Fahd International Stadium, Riyadh, Saudi Arabia
+  static const double stadiumLat = 24.7257;
+  static const double stadiumLng = 46.8222;
 
   // ========== USERS ==========
   static final List<User> users = [
@@ -73,230 +73,233 @@ class DummyData {
 
   // ========== VENUE ==========
   static final Venue venue = Venue(
-    id: 'venue_lusail_stadium',
-    name: 'Lusail Stadium',
-    address: 'Lusail, Qatar',
+    id: 'venue_king_fahd_stadium',
+    name: 'King Fahd International Stadium',
+    address: 'Riyadh, Saudi Arabia',
     coordinates: const LatLng(stadiumLat, stadiumLng),
-    capacity: 88966,
-    description: 'Iconic stadium for FIFA World Cup 2026',
+    capacity: 68752,
+    description: 'Premier stadium for FIFA World Cup 2035',
   );
 
   // ========== EVENT ==========
   static final Event event = Event(
-    id: 'event_wc2026_semifinal',
-    name: 'FIFA World Cup 2026 - Semifinal',
+    id: 'event_wc2035_semifinal',
+    name: 'Al-Taawoun FC vs NEOM SC',
     venueId: venue.id,
-    startDate: DateTime(2026, 6, 15, 18, 0),
-    endDate: DateTime(2026, 6, 15, 22, 0),
+    startDate: DateTime(2035, 11, 23, 20, 0),
+    endDate: DateTime(2035, 11, 23, 23, 0),
     capacity: venue.capacity,
     status: 'active',
-    description: 'FIFA World Cup 2026 Semifinal Match',
+    description: 'Saudi Pro League - Matchday 12',
   );
 
   // ========== ZONES ==========
+  // King Fahd Stadium is roughly circular, ~300m diameter
+  // At lat 24.7257: 0.001° lat ≈ 111m, 0.001° lng ≈ 101m
   static final List<Zone> zones = [
-    // 1. North Entrance
-    Zone(
-      id: 'zone_north_entrance',
-      venueId: venue.id,
-      name: 'North Entrance',
-      boundaries: [
-        LatLng(stadiumLat + 0.002, stadiumLng - 0.001),
-        LatLng(stadiumLat + 0.002, stadiumLng + 0.001),
-        LatLng(stadiumLat + 0.0015, stadiumLng + 0.001),
-        LatLng(stadiumLat + 0.0015, stadiumLng - 0.001),
-      ],
-      capacity: 10000,
-      type: 'entrance',
-      description: 'Main northern entrance for ticket holders',
-    ),
-
-    // 2. South Entrance
-    Zone(
-      id: 'zone_south_entrance',
-      venueId: venue.id,
-      name: 'South Entrance',
-      boundaries: [
-        LatLng(stadiumLat - 0.002, stadiumLng - 0.001),
-        LatLng(stadiumLat - 0.002, stadiumLng + 0.001),
-        LatLng(stadiumLat - 0.0015, stadiumLng + 0.001),
-        LatLng(stadiumLat - 0.0015, stadiumLng - 0.001),
-      ],
-      capacity: 10000,
-      type: 'entrance',
-      description: 'Southern entrance with VIP access',
-    ),
-
-    // 3. East Stand
-    Zone(
-      id: 'zone_east_stand',
-      venueId: venue.id,
-      name: 'East Stand',
-      boundaries: [
-        LatLng(stadiumLat - 0.001, stadiumLng + 0.0015),
-        LatLng(stadiumLat + 0.001, stadiumLng + 0.0015),
-        LatLng(stadiumLat + 0.001, stadiumLng + 0.002),
-        LatLng(stadiumLat - 0.001, stadiumLng + 0.002),
-      ],
-      capacity: 20000,
-      type: 'seating',
-      description: 'Eastern seating section',
-    ),
-
-    // 4. West Stand
-    Zone(
-      id: 'zone_west_stand',
-      venueId: venue.id,
-      name: 'West Stand',
-      boundaries: [
-        LatLng(stadiumLat - 0.001, stadiumLng - 0.002),
-        LatLng(stadiumLat + 0.001, stadiumLng - 0.002),
-        LatLng(stadiumLat + 0.001, stadiumLng - 0.0015),
-        LatLng(stadiumLat - 0.001, stadiumLng - 0.0015),
-      ],
-      capacity: 20000,
-      type: 'seating',
-      description: 'Western seating section',
-    ),
-
-    // 5. North Stand
+    // 1. North Stand - Behind north goal
     Zone(
       id: 'zone_north_stand',
       venueId: venue.id,
       name: 'North Stand',
       boundaries: [
-        LatLng(stadiumLat + 0.001, stadiumLng - 0.0015),
-        LatLng(stadiumLat + 0.002, stadiumLng - 0.0015),
-        LatLng(stadiumLat + 0.002, stadiumLng + 0.0015),
-        LatLng(stadiumLat + 0.001, stadiumLng + 0.0015),
+        LatLng(stadiumLat + 0.0010, stadiumLng - 0.0008),
+        LatLng(stadiumLat + 0.0010, stadiumLng + 0.0008),
+        LatLng(stadiumLat + 0.0015, stadiumLng + 0.0006),
+        LatLng(stadiumLat + 0.0015, stadiumLng - 0.0006),
       ],
-      capacity: 15000,
+      capacity: 12000,
       type: 'seating',
-      description: 'Northern seating section',
+      description: 'Northern stand behind the goal',
     ),
 
-    // 6. South Stand
+    // 2. South Stand - Behind south goal
     Zone(
       id: 'zone_south_stand',
       venueId: venue.id,
       name: 'South Stand',
       boundaries: [
-        LatLng(stadiumLat - 0.002, stadiumLng - 0.0015),
-        LatLng(stadiumLat - 0.001, stadiumLng - 0.0015),
-        LatLng(stadiumLat - 0.001, stadiumLng + 0.0015),
-        LatLng(stadiumLat - 0.002, stadiumLng + 0.0015),
+        LatLng(stadiumLat - 0.0015, stadiumLng - 0.0006),
+        LatLng(stadiumLat - 0.0015, stadiumLng + 0.0006),
+        LatLng(stadiumLat - 0.0010, stadiumLng + 0.0008),
+        LatLng(stadiumLat - 0.0010, stadiumLng - 0.0008),
       ],
-      capacity: 15000,
+      capacity: 12000,
       type: 'seating',
-      description: 'Southern seating section',
+      description: 'Southern stand behind the goal',
     ),
 
-    // 7. Concourse A
+    // 3. East Wing - Main grandstand
     Zone(
-      id: 'zone_concourse_a',
+      id: 'zone_east_wing',
       venueId: venue.id,
-      name: 'Concourse A',
+      name: 'East Wing',
       boundaries: [
-        LatLng(stadiumLat - 0.0005, stadiumLng - 0.001),
-        LatLng(stadiumLat + 0.0005, stadiumLng - 0.001),
-        LatLng(stadiumLat + 0.0005, stadiumLng + 0.001),
-        LatLng(stadiumLat - 0.0005, stadiumLng + 0.001),
+        LatLng(stadiumLat - 0.0008, stadiumLng + 0.0010),
+        LatLng(stadiumLat + 0.0008, stadiumLng + 0.0010),
+        LatLng(stadiumLat + 0.0006, stadiumLng + 0.0016),
+        LatLng(stadiumLat - 0.0006, stadiumLng + 0.0016),
+      ],
+      capacity: 18000,
+      type: 'seating',
+      description: 'Main grandstand - east side',
+    ),
+
+    // 4. West Wing - Opposite stand
+    Zone(
+      id: 'zone_west_wing',
+      venueId: venue.id,
+      name: 'West Wing',
+      boundaries: [
+        LatLng(stadiumLat - 0.0006, stadiumLng - 0.0016),
+        LatLng(stadiumLat + 0.0006, stadiumLng - 0.0016),
+        LatLng(stadiumLat + 0.0008, stadiumLng - 0.0010),
+        LatLng(stadiumLat - 0.0008, stadiumLng - 0.0010),
+      ],
+      capacity: 18000,
+      type: 'seating',
+      description: 'West side stand',
+    ),
+
+    // 5. VIP Section - Central east premium area
+    Zone(
+      id: 'zone_vip',
+      venueId: venue.id,
+      name: 'VIP Section',
+      boundaries: [
+        LatLng(stadiumLat - 0.0004, stadiumLng + 0.0016),
+        LatLng(stadiumLat + 0.0004, stadiumLng + 0.0016),
+        LatLng(stadiumLat + 0.0004, stadiumLng + 0.0020),
+        LatLng(stadiumLat - 0.0004, stadiumLng + 0.0020),
+      ],
+      capacity: 3000,
+      type: 'vip',
+      description: 'Premium VIP hospitality area',
+    ),
+
+    // 6. North Gate - Entry plaza
+    Zone(
+      id: 'zone_north_gate',
+      venueId: venue.id,
+      name: 'North Gate',
+      boundaries: [
+        LatLng(stadiumLat + 0.0015, stadiumLng - 0.0005),
+        LatLng(stadiumLat + 0.0015, stadiumLng + 0.0005),
+        LatLng(stadiumLat + 0.0022, stadiumLng + 0.0005),
+        LatLng(stadiumLat + 0.0022, stadiumLng - 0.0005),
+      ],
+      capacity: 8000,
+      type: 'entrance',
+      description: 'Main northern entry gate and plaza',
+    ),
+
+    // 7. South Gate - Entry plaza
+    Zone(
+      id: 'zone_south_gate',
+      venueId: venue.id,
+      name: 'South Gate',
+      boundaries: [
+        LatLng(stadiumLat - 0.0022, stadiumLng - 0.0005),
+        LatLng(stadiumLat - 0.0022, stadiumLng + 0.0005),
+        LatLng(stadiumLat - 0.0015, stadiumLng + 0.0005),
+        LatLng(stadiumLat - 0.0015, stadiumLng - 0.0005),
+      ],
+      capacity: 8000,
+      type: 'entrance',
+      description: 'Southern entry gate and plaza',
+    ),
+
+    // 8. Food Court - West concourse area (outside West Wing)
+    Zone(
+      id: 'zone_food_court',
+      venueId: venue.id,
+      name: 'Food Court',
+      boundaries: [
+        LatLng(stadiumLat - 0.0004, stadiumLng - 0.0022),
+        LatLng(stadiumLat + 0.0004, stadiumLng - 0.0022),
+        LatLng(stadiumLat + 0.0004, stadiumLng - 0.0016),
+        LatLng(stadiumLat - 0.0004, stadiumLng - 0.0016),
       ],
       capacity: 5000,
       type: 'concourse',
       description: 'Main concourse with food and facilities',
     ),
 
-    // 8. Fan Zone
-    Zone(
-      id: 'zone_fan_zone',
-      venueId: venue.id,
-      name: 'Fan Zone',
-      boundaries: [
-        LatLng(stadiumLat + 0.003, stadiumLng - 0.002),
-        LatLng(stadiumLat + 0.003, stadiumLng + 0.002),
-        LatLng(stadiumLat + 0.004, stadiumLng + 0.002),
-        LatLng(stadiumLat + 0.004, stadiumLng - 0.002),
-      ],
-      capacity: 3966,
-      type: 'fan_zone',
-      description: 'Outdoor fan celebration area',
-    ),
   ];
 
   // ========== CROWD DENSITY ==========
   static List<CrowdDensity> get crowdDensityData {
     return [
-      // North Entrance - 75% filled, HIGH
-      CrowdDensity.fromZoneData(
-        zoneId: 'zone_north_entrance',
-        zoneName: 'North Entrance',
-        currentPopulation: 7500,
-        capacity: 10000,
-        areaInSqMeters: 5000,
-      ),
-
-      // South Entrance - 45% filled, MODERATE
-      CrowdDensity.fromZoneData(
-        zoneId: 'zone_south_entrance',
-        zoneName: 'South Entrance',
-        currentPopulation: 4500,
-        capacity: 10000,
-        areaInSqMeters: 5000,
-      ),
-
-      // East Stand - 82% filled, HIGH
-      CrowdDensity.fromZoneData(
-        zoneId: 'zone_east_stand',
-        zoneName: 'East Stand',
-        currentPopulation: 16400,
-        capacity: 20000,
-        areaInSqMeters: 10000,
-      ),
-
-      // West Stand - 68% filled, MODERATE
-      CrowdDensity.fromZoneData(
-        zoneId: 'zone_west_stand',
-        zoneName: 'West Stand',
-        currentPopulation: 13600,
-        capacity: 20000,
-        areaInSqMeters: 10000,
-      ),
-
-      // North Stand - 92% filled, CRITICAL
+      // North Stand - 85% filled, HIGH
       CrowdDensity.fromZoneData(
         zoneId: 'zone_north_stand',
         zoneName: 'North Stand',
-        currentPopulation: 13800,
-        capacity: 15000,
-        areaInSqMeters: 7500,
+        currentPopulation: 10200,
+        capacity: 12000,
+        areaInSqMeters: 6000,
       ),
 
-      // South Stand - 55% filled, MODERATE
+      // South Stand - 70% filled, MODERATE
       CrowdDensity.fromZoneData(
         zoneId: 'zone_south_stand',
         zoneName: 'South Stand',
-        currentPopulation: 8250,
-        capacity: 15000,
+        currentPopulation: 8400,
+        capacity: 12000,
+        areaInSqMeters: 6000,
+      ),
+
+      // East Wing - 92% filled, CRITICAL
+      CrowdDensity.fromZoneData(
+        zoneId: 'zone_east_wing',
+        zoneName: 'East Wing',
+        currentPopulation: 16560,
+        capacity: 18000,
+        areaInSqMeters: 10000,
+      ),
+
+      // West Wing - 78% filled, HIGH
+      CrowdDensity.fromZoneData(
+        zoneId: 'zone_west_wing',
+        zoneName: 'West Wing',
+        currentPopulation: 14040,
+        capacity: 18000,
+        areaInSqMeters: 10000,
+      ),
+
+      // VIP Section - 65% filled, MODERATE
+      CrowdDensity.fromZoneData(
+        zoneId: 'zone_vip',
+        zoneName: 'VIP Section',
+        currentPopulation: 1950,
+        capacity: 3000,
+        areaInSqMeters: 3500,
+      ),
+
+      // North Gate - 40% filled, SAFE
+      CrowdDensity.fromZoneData(
+        zoneId: 'zone_north_gate',
+        zoneName: 'North Gate',
+        currentPopulation: 3200,
+        capacity: 8000,
         areaInSqMeters: 7500,
       ),
 
-      // Concourse A - 88% filled, CRITICAL
+      // South Gate - 88% filled, CRITICAL
       CrowdDensity.fromZoneData(
-        zoneId: 'zone_concourse_a',
-        zoneName: 'Concourse A',
-        currentPopulation: 4400,
-        capacity: 5000,
-        areaInSqMeters: 2500,
+        zoneId: 'zone_south_gate',
+        zoneName: 'South Gate',
+        currentPopulation: 7040,
+        capacity: 8000,
+        areaInSqMeters: 7500,
       ),
 
-      // Fan Zone - 35% filled, SAFE
+      // Food Court - 75% filled, HIGH
       CrowdDensity.fromZoneData(
-        zoneId: 'zone_fan_zone',
-        zoneName: 'Fan Zone',
-        currentPopulation: 1388,
-        capacity: 3966,
-        areaInSqMeters: 1983,
+        zoneId: 'zone_food_court',
+        zoneName: 'Food Court',
+        currentPopulation: 3750,
+        capacity: 5000,
+        areaInSqMeters: 2500,
       ),
     ];
   }
@@ -312,7 +315,7 @@ class DummyData {
         eventId: event.id,
         reportedBy: users[2].id, // Security
         reportedByName: users[2].name,
-        location: zones[4].center, // North Stand
+        location: zones[0].center, // North Stand
         type: 'medical',
         description: 'Fan collapsed, requires immediate medical attention',
         severity: 'critical',
@@ -323,13 +326,13 @@ class DummyData {
         assignedToName: users[3].name,
       ),
 
-      // 2. Overcrowding - Concourse A - High
+      // 2. Overcrowding - Food Court - High
       Incident(
         id: 'incident_2',
         eventId: event.id,
         reportedBy: users[2].id, // Security
         reportedByName: users[2].name,
-        location: zones[6].center, // Concourse A
+        location: zones[7].center, // Food Court
         type: 'overcrowding',
         description: 'Dangerous crowd buildup near food vendors',
         severity: 'high',
@@ -346,7 +349,7 @@ class DummyData {
         eventId: event.id,
         reportedBy: users[2].id,
         reportedByName: users[2].name,
-        location: zones[2].center, // East Stand
+        location: zones[2].center, // East Wing
         type: 'other',
         description: 'Lost child, approximately 8 years old, wearing blue jersey',
         severity: 'medium',
@@ -358,13 +361,13 @@ class DummyData {
         resolutionNotes: 'Child reunited with parents at section E12',
       ),
 
-      // 4. Minor Injury - South Entrance - Low
+      // 4. Minor Injury - South Gate - Low
       Incident(
         id: 'incident_4',
         eventId: event.id,
         reportedBy: users[2].id,
         reportedByName: users[2].name,
-        location: zones[1].center, // South Entrance
+        location: zones[6].center, // South Gate
         type: 'medical',
         description: 'Visitor twisted ankle, requesting first aid',
         severity: 'low',
@@ -379,7 +382,7 @@ class DummyData {
         eventId: event.id,
         reportedBy: users[2].id,
         reportedByName: users[2].name,
-        location: zones[3].center, // West Stand
+        location: zones[3].center, // West Wing
         type: 'security',
         description: 'Unattended bag reported in section W45',
         severity: 'high',
@@ -419,9 +422,9 @@ class DummyData {
         createdBy: users[1].id,
         createdByName: users[1].name,
         type: 'congestion',
-        message: 'Concourse A congested. Please use alternative routes.',
+        message: 'Food Court congested. Please use alternative routes.',
         targetRoles: ['fan', 'security'],
-        targetZones: ['zone_concourse_a'],
+        targetZones: ['zone_food_court'],
         severity: 'warning',
         createdAt: now.subtract(const Duration(minutes: 12)),
         expiresAt: now.add(const Duration(hours: 2)),
