@@ -6,6 +6,7 @@ import '../services/auth_service.dart';
 import '../services/notification_service.dart';
 import '../services/location_service.dart';
 import '../core/constants/constants.dart';
+import '../core/config/environment.dart';
 
 class AuthProvider with ChangeNotifier {
   final AuthService _authService = AuthService();
@@ -15,12 +16,27 @@ class AuthProvider with ChangeNotifier {
   User? _currentUser;
   bool _isLoading = false;
   String? _errorMessage;
+  bool _needsEmailVerification = false;
+  int _loginAttempts = 0;
+  DateTime? _lockoutUntil;
 
   User? get currentUser => _currentUser;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   bool get isAuthenticated => _currentUser != null;
   String? get userRole => _currentUser?.role;
+  bool get needsEmailVerification => _needsEmailVerification;
+  bool get isEmailVerified => _authService.isEmailVerified;
+
+  bool get isLockedOut {
+    if (_lockoutUntil == null) return false;
+    if (DateTime.now().isAfter(_lockoutUntil!)) {
+      _lockoutUntil = null;
+      _loginAttempts = 0;
+      return false;
+    }
+    return true;
+  }
 
   // Initialize - Check if user is already logged in
   Future<void> initialize() async {
@@ -28,6 +44,25 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
 
     try {
+      await _loadLockoutState();
+
+      // Check session timeout
+      final prefs = await SharedPreferences.getInstance();
+      final lastActiveStr = prefs.getString(AppConstants.keyLastActiveTime);
+      if (lastActiveStr != null) {
+        final lastActive = DateTime.tryParse(lastActiveStr);
+        if (lastActive != null) {
+          final elapsed = DateTime.now().difference(lastActive);
+          if (elapsed > AppConfig.sessionTimeout) {
+            // Session expired - force logout
+            await _clearLocalSession();
+            _isLoading = false;
+            notifyListeners();
+            return;
+          }
+        }
+      }
+
       // Check Firebase Auth state
       final firebaseUser = _authService.currentUser;
 
@@ -36,12 +71,11 @@ class AuthProvider with ChangeNotifier {
         _currentUser = await _authService.getUserData(firebaseUser.uid);
 
         if (_currentUser != null) {
-          // Initialize notifications
           await _initializeNotifications();
+          await _updateLastActiveTime();
         }
       } else {
         // Check SharedPreferences for offline mode
-        final prefs = await SharedPreferences.getInstance();
         final isLoggedIn = prefs.getBool(AppConstants.keyIsLoggedIn) ?? false;
 
         if (isLoggedIn) {
@@ -50,7 +84,10 @@ class AuthProvider with ChangeNotifier {
           final userName = prefs.getString(AppConstants.keyUserName);
           final userRole = prefs.getString(AppConstants.keyUserRole);
 
-          if (userId != null && userEmail != null && userName != null && userRole != null) {
+          if (userId != null &&
+              userEmail != null &&
+              userName != null &&
+              userRole != null) {
             _currentUser = User(
               id: userId,
               email: userEmail,
@@ -76,14 +113,12 @@ class AuthProvider with ChangeNotifier {
 
     try {
       await _notificationService.initialize();
-
-      // Subscribe to role-based topics
       await _notificationService.subscribeToRoleTopics(_currentUser!.role);
 
-      // Save FCM token to Firestore
       final token = await _notificationService.getToken();
       if (token != null) {
-        await _notificationService.saveTokenToFirestore(_currentUser!.id, token);
+        await _notificationService.saveTokenToFirestore(
+            _currentUser!.id, token);
       }
     } catch (e) {
       debugPrint('Error initializing notifications: $e');
@@ -92,6 +127,23 @@ class AuthProvider with ChangeNotifier {
 
   // Login with email and password
   Future<bool> login(String email, String password) async {
+    // Check lockout
+    if (isLockedOut) {
+      final remaining = _lockoutUntil!.difference(DateTime.now()).inMinutes;
+      _errorMessage =
+          'Account locked. Try again in $remaining minute${remaining == 1 ? '' : 's'}.';
+      notifyListeners();
+      return false;
+    }
+
+    // Validate inputs
+    final emailError = AppConstants.validateEmail(email);
+    if (emailError != null) {
+      _errorMessage = emailError;
+      notifyListeners();
+      return false;
+    }
+
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
@@ -103,24 +155,77 @@ class AuthProvider with ChangeNotifier {
       );
 
       if (user != null) {
+        // Reset login attempts on success
+        _loginAttempts = 0;
+        _lockoutUntil = null;
+        await _saveLockoutState();
+
+        // Check email verification (skip for demo accounts in dev mode)
+        final isDemoLogin = AppConfig.showDemoFeatures &&
+            AppConstants.isDemoAccount(email);
+        if (!isDemoLogin && !_authService.isEmailVerified) {
+          _needsEmailVerification = true;
+          _currentUser = user;
+          await _saveUserToPrefs();
+          _isLoading = false;
+          notifyListeners();
+          return true; // Login succeeded, but needs verification
+        }
+
+        _needsEmailVerification = false;
         _currentUser = user;
         await _saveUserToPrefs();
+        await _updateLastActiveTime();
         await _initializeNotifications();
 
         _isLoading = false;
         notifyListeners();
         return true;
       } else {
-        _errorMessage = 'Invalid email or password';
+        _handleFailedLogin();
         _isLoading = false;
         notifyListeners();
         return false;
       }
     } catch (e) {
+      _handleFailedLogin();
       _errorMessage = e.toString();
       _isLoading = false;
       notifyListeners();
       return false;
+    }
+  }
+
+  void _handleFailedLogin() {
+    _loginAttempts++;
+    if (_loginAttempts >= AppConfig.maxLoginAttempts) {
+      _lockoutUntil = DateTime.now().add(AppConfig.lockoutDuration);
+      _errorMessage = AppConstants.errorAccountLocked;
+    } else {
+      final remaining = AppConfig.maxLoginAttempts - _loginAttempts;
+      _errorMessage =
+          'Invalid email or password. $remaining attempt${remaining == 1 ? '' : 's'} remaining.';
+    }
+    _saveLockoutState();
+  }
+
+  Future<void> _loadLockoutState() async {
+    final prefs = await SharedPreferences.getInstance();
+    _loginAttempts = prefs.getInt(AppConstants.keyLoginAttempts) ?? 0;
+    final lockoutStr = prefs.getString(AppConstants.keyLockoutUntil);
+    if (lockoutStr != null) {
+      _lockoutUntil = DateTime.tryParse(lockoutStr);
+    }
+  }
+
+  Future<void> _saveLockoutState() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(AppConstants.keyLoginAttempts, _loginAttempts);
+    if (_lockoutUntil != null) {
+      await prefs.setString(
+          AppConstants.keyLockoutUntil, _lockoutUntil!.toIso8601String());
+    } else {
+      await prefs.remove(AppConstants.keyLockoutUntil);
     }
   }
 
@@ -136,6 +241,31 @@ class AuthProvider with ChangeNotifier {
     _errorMessage = null;
     notifyListeners();
 
+    // Validate inputs
+    final emailError = AppConstants.validateEmail(email);
+    if (emailError != null) {
+      _errorMessage = emailError;
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+
+    final passwordError = AppConstants.validatePassword(password);
+    if (passwordError != null) {
+      _errorMessage = passwordError;
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+
+    final nameError = AppConstants.validateName(name);
+    if (nameError != null) {
+      _errorMessage = nameError;
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+
     try {
       final user = await _authService.registerWithEmailAndPassword(
         email: email,
@@ -147,8 +277,8 @@ class AuthProvider with ChangeNotifier {
 
       if (user != null) {
         _currentUser = user;
+        _needsEmailVerification = true;
         await _saveUserToPrefs();
-        await _initializeNotifications();
 
         _isLoading = false;
         notifyListeners();
@@ -167,26 +297,58 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
+  // Resend email verification
+  Future<bool> resendEmailVerification() async {
+    try {
+      await _authService.sendEmailVerification();
+      return true;
+    } catch (e) {
+      _errorMessage = 'Failed to send verification email: $e';
+      notifyListeners();
+      return false;
+    }
+  }
+
+  // Check email verification and proceed
+  Future<bool> checkAndConfirmEmailVerification() async {
+    try {
+      final verified = await _authService.checkEmailVerified();
+      if (verified) {
+        _needsEmailVerification = false;
+        await _updateLastActiveTime();
+        await _initializeNotifications();
+        notifyListeners();
+        return true;
+      }
+      return false;
+    } catch (e) {
+      debugPrint('Error checking email verification: $e');
+      return false;
+    }
+  }
+
   // Logout
   Future<void> logout() async {
     _isLoading = true;
     notifyListeners();
 
     try {
-      // Unsubscribe from notifications
       if (_currentUser != null) {
-        await _notificationService.unsubscribeFromAllTopics(_currentUser!.role);
+        await _notificationService
+            .unsubscribeFromAllTopics(_currentUser!.role);
       }
 
-      // Sign out from Firebase
-      await _authService.signOut();
+      // Stop location sharing
+      if (_locationService.isSharing) {
+        await _locationService.stopSharing();
+      }
 
-      // Clear local storage
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.clear();
+      await _authService.signOut();
+      await _clearLocalSession();
 
       _currentUser = null;
       _errorMessage = null;
+      _needsEmailVerification = false;
     } catch (e) {
       debugPrint('Error logging out: $e');
     } finally {
@@ -213,14 +375,15 @@ class AuthProvider with ChangeNotifier {
         name: name,
         phone: phone,
         profileImageUrl: profileImageUrl,
+        locationSharingEnabled: locationSharingEnabled,
       );
 
-      // Update local user object
       _currentUser = _currentUser!.copyWith(
         name: name ?? _currentUser!.name,
         phoneNumber: phone ?? _currentUser!.phoneNumber,
         profileImageUrl: profileImageUrl ?? _currentUser!.profileImageUrl,
-        locationSharingEnabled: locationSharingEnabled ?? _currentUser!.locationSharingEnabled,
+        locationSharingEnabled:
+            locationSharingEnabled ?? _currentUser!.locationSharingEnabled,
       );
 
       await _saveUserToPrefs();
@@ -245,15 +408,14 @@ class AuthProvider with ChangeNotifier {
     final newValue = !_currentUser!.locationSharingEnabled;
 
     if (newValue) {
-      // Start GPS sharing
       final success = await _locationService.startSharing(_currentUser!.id);
       if (!success) {
-        _errorMessage = 'Location permission denied. Please enable it in Settings.';
+        _errorMessage =
+            'Location permission denied. Please enable it in Settings.';
         notifyListeners();
         return;
       }
     } else {
-      // Stop GPS sharing
       await _locationService.stopSharing();
     }
 
@@ -268,6 +430,15 @@ class AuthProvider with ChangeNotifier {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
+
+    // Validate new password
+    final passwordError = AppConstants.validatePassword(newPassword);
+    if (passwordError != null) {
+      _errorMessage = passwordError;
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
 
     try {
       await _authService.changePassword(
@@ -318,6 +489,22 @@ class AuthProvider with ChangeNotifier {
     await prefs.setString(AppConstants.keyUserRole, _currentUser!.role);
   }
 
+  Future<void> _updateLastActiveTime() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+        AppConstants.keyLastActiveTime, DateTime.now().toIso8601String());
+  }
+
+  Future<void> _clearLocalSession() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(AppConstants.keyIsLoggedIn);
+    await prefs.remove(AppConstants.keyUserId);
+    await prefs.remove(AppConstants.keyUserEmail);
+    await prefs.remove(AppConstants.keyUserName);
+    await prefs.remove(AppConstants.keyUserRole);
+    await prefs.remove(AppConstants.keyLastActiveTime);
+  }
+
   // Clear error message
   void clearError() {
     _errorMessage = null;
@@ -326,12 +513,12 @@ class AuthProvider with ChangeNotifier {
 
   // Listen to auth state changes
   void listenToAuthChanges() {
-    _authService.authStateChanges.listen((firebase_auth.User? firebaseUser) async {
+    _authService.authStateChanges
+        .listen((firebase_auth.User? firebaseUser) async {
       if (firebaseUser == null) {
         _currentUser = null;
         notifyListeners();
       } else {
-        // Refresh user data
         _currentUser = await _authService.getUserData(firebaseUser.uid);
         notifyListeners();
       }
@@ -347,6 +534,7 @@ class AuthProvider with ChangeNotifier {
       if (updatedUser != null) {
         _currentUser = updatedUser;
         await _saveUserToPrefs();
+        await _updateLastActiveTime();
         notifyListeners();
       }
     } catch (e) {
@@ -354,19 +542,17 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  // Quick login for demo (using predefined demo accounts)
-  Future<void> quickLoginAs(String role) async {
-    // Demo credentials mapping
-    final demoCredentials = {
-      'fan': {'email': 'fan@test.com', 'password': 'password123'},
-      'organizer': {'email': 'organizer@test.com', 'password': 'password123'},
-      'security': {'email': 'security@test.com', 'password': 'password123'},
-      'emergency': {'email': 'emergency@test.com', 'password': 'password123'},
-    };
+  // Quick login for demo (only in non-production)
+  Future<bool> quickLoginAs(String role) async {
+    if (!AppConfig.showDemoFeatures) return false;
 
-    final credentials = demoCredentials[role];
+    final creds = AppConstants.demoCredentials;
+    if (creds == null) return false;
+
+    final credentials = creds[role];
     if (credentials != null) {
-      await login(credentials['email']!, credentials['password']!);
+      return await login(credentials['email']!, credentials['password']!);
     }
+    return false;
   }
 }
