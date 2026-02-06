@@ -14,7 +14,7 @@ import '../../widgets/common/custom_button.dart';
 import '../../widgets/common/custom_text_field.dart';
 import '../../widgets/common/profile_dialogs.dart';
 import '../../widgets/map/crowd_heatmap.dart';
-import '../../core/utils/dummy_data.dart';
+// DummyData import removed - using provider data instead
 
 class OrganizerDashboard extends StatefulWidget {
   const OrganizerDashboard({super.key});
@@ -64,6 +64,7 @@ class _OrganizerDashboardState extends State<OrganizerDashboard> {
           children: [
             _DashboardTab(
               onSendAlert: () => _showSendAlertDialog(context),
+              onNavigate: _onItemTapped,
             ),
             _MapTab(),
             _AlertsTab(),
@@ -242,7 +243,7 @@ class _OrganizerDashboardState extends State<OrganizerDashboard> {
                     final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
                     await alertProvider.sendAlert(
-                      eventId: DummyData.event.id,
+                      eventId: 'current_event',
                       createdBy: authProvider.currentUser!.id,
                       createdByName: authProvider.currentUser!.name,
                       type: 'info',
@@ -361,8 +362,9 @@ class _SeverityChip extends StatelessWidget {
 
 class _DashboardTab extends StatelessWidget {
   final VoidCallback onSendAlert;
+  final Function(int) onNavigate;
 
-  const _DashboardTab({required this.onSendAlert});
+  const _DashboardTab({required this.onSendAlert, required this.onNavigate});
 
   @override
   Widget build(BuildContext context) {
@@ -406,38 +408,47 @@ class _DashboardTab extends StatelessWidget {
                     const Spacer(),
                     IconButton(
                       icon: const Icon(Icons.search, color: Colors.white),
-                      onPressed: () {},
+                      onPressed: () => _showSearch(context),
                     ),
                     Stack(
                       clipBehavior: Clip.none,
                       children: [
                         IconButton(
                           icon: const Icon(Icons.notifications_outlined, color: Colors.white),
-                          onPressed: () {},
+                          onPressed: () => onNavigate(2),
                         ),
                         Positioned(
                           right: 8,
                           top: 8,
-                          child: Container(
-                            width: 10,
-                            height: 10,
-                            decoration: const BoxDecoration(
-                              color: AppColors.red,
-                              shape: BoxShape.circle,
-                            ),
+                          child: Consumer<AlertProvider>(
+                            builder: (context, alertProvider, _) {
+                              final count = alertProvider.getAlertsForRole('organizer').length;
+                              if (count == 0) return const SizedBox.shrink();
+                              return Container(
+                                width: 10,
+                                height: 10,
+                                decoration: const BoxDecoration(
+                                  color: AppColors.red,
+                                  shape: BoxShape.circle,
+                                ),
+                              );
+                            },
                           ),
                         ),
                       ],
                     ),
-                    Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: AppColors.coolSteelBlue,
-                        border: Border.all(color: AppColors.softTealBlue, width: 2),
+                    GestureDetector(
+                      onTap: () => onNavigate(3),
+                      child: Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: AppColors.coolSteelBlue,
+                          border: Border.all(color: AppColors.softTealBlue, width: 2),
+                        ),
+                        child: const Icon(Icons.person, color: Colors.white, size: 20),
                       ),
-                      child: const Icon(Icons.person, color: Colors.white, size: 20),
                     ),
                   ],
                 ),
@@ -553,7 +564,7 @@ class _DashboardTab extends StatelessWidget {
                             }
                             return CrowdHeatmap(
                               crowdData: crowdProvider.crowdData,
-                              zones: DummyData.zones,
+                              zones: crowdProvider.allZones,
                             );
                           },
                         ),
@@ -597,7 +608,19 @@ class _DashboardTab extends StatelessWidget {
               CustomButton.secondary(
                 text: 'View Analytics',
                 icon: Icons.analytics_outlined,
-                onPressed: () {},
+                onPressed: () => context.push('/analytics'),
+              ),
+              const SizedBox(height: 12),
+              CustomButton.secondary(
+                text: 'Staff Management',
+                icon: Icons.people_outline,
+                onPressed: () => context.push('/staff-management'),
+              ),
+              const SizedBox(height: 12),
+              CustomButton.secondary(
+                text: 'Communication Hub',
+                icon: Icons.chat_outlined,
+                onPressed: () => context.push('/communication'),
               ),
               ],
             ),
@@ -607,6 +630,137 @@ class _DashboardTab extends StatelessWidget {
     );
   }
 
+  void _showSearch(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) {
+        final searchController = TextEditingController();
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+          ),
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: AppColors.coolSteelBlue,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40, height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.white24,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  'Search',
+                  style: GoogleFonts.montserrat(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: searchController,
+                  autofocus: true,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    hintText: 'Search events, zones, alerts...',
+                    hintStyle: const TextStyle(color: Colors.white38),
+                    prefixIcon: const Icon(Icons.search, color: Colors.white54),
+                    filled: true,
+                    fillColor: const Color(0xFF0D1B2A),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Colors.white12),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: AppColors.softTealBlue),
+                    ),
+                  ),
+                  onSubmitted: (value) {
+                    Navigator.pop(context);
+                    if (value.trim().isNotEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Searching for "$value"...'),
+                          backgroundColor: AppColors.softTealBlue,
+                        ),
+                      );
+                    }
+                  },
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Quick Access',
+                  style: GoogleFonts.roboto(
+                    fontSize: 13,
+                    color: Colors.white54,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _SearchChip(label: 'Active Events', onTap: () => Navigator.pop(context)),
+                    _SearchChip(label: 'Crowd Zones', onTap: () { Navigator.pop(context); onNavigate(1); }),
+                    _SearchChip(label: 'Alerts', onTap: () { Navigator.pop(context); onNavigate(2); }),
+                    _SearchChip(label: 'Incidents', onTap: () { Navigator.pop(context); onNavigate(2); }),
+                  ],
+                ),
+                const SizedBox(height: 24),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _SearchChip extends StatelessWidget {
+  final String label;
+  final VoidCallback onTap;
+
+  const _SearchChip({required this.label, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.white24),
+        ),
+        child: Text(
+          label,
+          style: GoogleFonts.roboto(
+            fontSize: 13,
+            color: Colors.white70,
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _EventCard extends StatelessWidget {
@@ -705,7 +859,7 @@ class _MapTab extends StatelessWidget {
             // Full Map
             CrowdHeatmap(
               crowdData: crowdProvider.crowdData,
-              zones: DummyData.zones,
+              zones: crowdProvider.allZones,
             ),
 
             // Density Legend
@@ -831,7 +985,7 @@ class _ZoneInfoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final zones = DummyData.zones;
+    final zones = crowdProvider.allZones;
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 40),

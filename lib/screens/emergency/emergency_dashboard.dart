@@ -6,7 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_map/flutter_map.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/constants/constants.dart';
-import '../../core/utils/dummy_data.dart';
+import 'package:latlong2/latlong.dart';
 import '../../providers/incident_provider.dart';
 import '../../providers/alert_provider.dart';
 import '../../providers/auth_provider.dart';
@@ -351,7 +351,7 @@ class _HomeTabState extends State<_HomeTab> {
                       borderRadius: BorderRadius.circular(16),
                       child: FlutterMap(
                         options: MapOptions(
-                          initialCenter: DummyData.venue.coordinates,
+                          initialCenter: LatLng(AppConstants.defaultLat, AppConstants.defaultLng),
                           initialZoom: AppConstants.defaultZoom,
                         ),
                         children: [
@@ -1006,7 +1006,7 @@ class _MapTab extends StatelessWidget {
               // Map
               FlutterMap(
                 options: MapOptions(
-                  initialCenter: DummyData.venue.coordinates,
+                  initialCenter: LatLng(AppConstants.defaultLat, AppConstants.defaultLng),
                   initialZoom: AppConstants.defaultZoom,
                 ),
                 children: [

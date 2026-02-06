@@ -5,7 +5,7 @@ import '../../core/theme/app_colors.dart';
 import '../../providers/crowd_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/map/crowd_heatmap.dart';
-import '../../core/utils/dummy_data.dart';
+import '../../core/constants/constants.dart';
 
 class VenueMapScreen extends StatefulWidget {
   const VenueMapScreen({super.key});
@@ -26,7 +26,7 @@ class _VenueMapScreenState extends State<VenueMapScreen> {
             // Full Map
             CrowdHeatmap(
               crowdData: crowdProvider.crowdData,
-              zones: DummyData.zones,
+              zones: crowdProvider.allZones,
               onZoneTap: (zone) {
                 _showZoneDetails(context, zone.id, crowdProvider);
               },
@@ -237,8 +237,10 @@ class _VenueMapScreenState extends State<VenueMapScreen> {
   }
 
   void _showEventInfo(BuildContext context) {
-    final venue = DummyData.venue;
-    final event = DummyData.event;
+    // Using constants for venue/event info
+    final venueName = AppConstants.venueName;
+    final eventName = AppConstants.eventName;
+    final venueCapacity = AppConstants.venueCapacity;
 
     showModalBottomSheet(
       context: context,
@@ -265,7 +267,7 @@ class _VenueMapScreenState extends State<VenueMapScreen> {
             ),
             const SizedBox(height: 20),
             Text(
-              venue.name,
+              venueName,
               style: GoogleFonts.montserrat(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
@@ -273,9 +275,9 @@ class _VenueMapScreenState extends State<VenueMapScreen> {
               ),
             ),
             const SizedBox(height: 12),
-            _InfoRow(label: 'Event', value: event.name),
-            _InfoRow(label: 'Capacity', value: '${venue.capacity}'),
-            _InfoRow(label: 'Status', value: event.status.toUpperCase()),
+            _InfoRow(label: 'Event', value: eventName),
+            _InfoRow(label: 'Capacity', value: '$venueCapacity'),
+            _InfoRow(label: 'Status', value: 'LIVE'),
             const SizedBox(height: 16),
           ],
         ),
@@ -284,7 +286,7 @@ class _VenueMapScreenState extends State<VenueMapScreen> {
   }
 
   void _showZoneDetails(BuildContext context, String zoneId, CrowdProvider crowdProvider) {
-    final zone = DummyData.getZoneById(zoneId);
+    final zone = crowdProvider.getZone(zoneId);
     final density = crowdProvider.getZoneDensity(zoneId);
 
     if (zone == null || density == null) return;

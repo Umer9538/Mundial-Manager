@@ -15,7 +15,7 @@ import '../../widgets/common/custom_text_field.dart';
 import '../../widgets/common/profile_dialogs.dart';
 import '../common/report_incident_screen.dart';
 import '../../widgets/map/crowd_heatmap.dart';
-import '../../core/utils/dummy_data.dart';
+import 'package:latlong2/latlong.dart';
 
 class SecurityDashboard extends StatefulWidget {
   const SecurityDashboard({super.key});
@@ -256,11 +256,15 @@ class _SecurityDashboardState extends State<SecurityDashboard> {
                     final incidentProvider = Provider.of<IncidentProvider>(context, listen: false);
                     final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
+                    final crowdProv = Provider.of<CrowdProvider>(context, listen: false);
+                    final defaultLocation = crowdProv.allZones.isNotEmpty
+                        ? crowdProv.allZones.first.center
+                        : const LatLng(24.7257, 46.8222);
                     await incidentProvider.reportIncident(
-                      eventId: DummyData.event.id,
+                      eventId: 'current_event',
                       reportedBy: authProvider.currentUser!.id,
                       reportedByName: authProvider.currentUser!.name,
-                      location: DummyData.zones.first.center,
+                      location: defaultLocation,
                       type: selectedType,
                       description: descriptionController.text,
                       severity: 'medium',
@@ -733,7 +737,7 @@ class _MonitoringTab extends StatelessWidget {
                   children: [
                     CrowdHeatmap(
                       crowdData: crowdProvider.crowdData,
-                      zones: DummyData.zones,
+                      zones: crowdProvider.allZones,
                     ),
                     // Zone info overlay
                     Positioned(
