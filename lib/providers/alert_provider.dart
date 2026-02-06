@@ -5,6 +5,7 @@ import '../models/alert.dart';
 import '../services/database_service.dart';
 import '../core/utils/dummy_data.dart';
 import '../core/constants/constants.dart';
+import '../core/config/environment.dart';
 
 class AlertProvider with ChangeNotifier {
   final DatabaseService _databaseService = DatabaseService();
@@ -76,15 +77,16 @@ class AlertProvider with ChangeNotifier {
         await _loadAlertsFromFirestore(eventId);
       }
 
-      // Fallback to dummy data if Firestore is empty
-      if (_alerts.isEmpty) {
+      // Fallback to dummy data only in development mode
+      if (_alerts.isEmpty && AppConfig.useDummyDataFallback) {
         _alerts = List.from(DummyData.alerts);
       }
     } catch (e) {
       _errorMessage = 'Failed to load alerts';
       debugPrint('Error initializing alerts: $e');
-      // Fallback to dummy data
-      _alerts = List.from(DummyData.alerts);
+      if (AppConfig.useDummyDataFallback) {
+        _alerts = List.from(DummyData.alerts);
+      }
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -322,8 +324,7 @@ class AlertProvider with ChangeNotifier {
         await _loadAlertsFromFirestore(_currentEventId!);
       }
 
-      // Fallback to dummy data
-      if (_alerts.isEmpty) {
+      if (_alerts.isEmpty && AppConfig.useDummyDataFallback) {
         _alerts = List.from(DummyData.alerts);
       }
       _errorMessage = null;

@@ -4,8 +4,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/crowd_density.dart';
 import '../models/zone.dart';
 import '../services/database_service.dart';
+import '../core/config/environment.dart';
 import '../core/utils/dummy_data.dart';
-import '../core/constants/constants.dart';
 
 class CrowdProvider with ChangeNotifier {
   final DatabaseService _databaseService = DatabaseService();
@@ -14,6 +14,7 @@ class CrowdProvider with ChangeNotifier {
   List<CrowdDensity> _crowdData = [];
   List<Zone> _zones = [];
   bool _isLoading = false;
+  String? _errorMessage;
   DateTime? _lastUpdated;
   StreamSubscription<QuerySnapshot>? _crowdSubscription;
   StreamSubscription<QuerySnapshot>? _zonesSubscription;
@@ -22,6 +23,7 @@ class CrowdProvider with ChangeNotifier {
   List<CrowdDensity> get crowdData => _crowdData;
   List<Zone> get allZones => _zones;
   bool get isLoading => _isLoading;
+  String? get errorMessage => _errorMessage;
   DateTime? get lastUpdated => _lastUpdated;
 
   // Get crowd data for specific zone
@@ -53,7 +55,7 @@ class CrowdProvider with ChangeNotifier {
     if (_crowdData.isEmpty) {
       return {
         'totalPopulation': 0,
-        'totalCapacity': DummyData.venue.capacity,
+        'totalCapacity': 0,
         'occupancyPercentage': 0,
         'criticalZones': 0,
         'highDensityZones': 0,
@@ -93,6 +95,7 @@ class CrowdProvider with ChangeNotifier {
   // Initialize crowd data
   Future<void> initialize({String? eventId}) async {
     _isLoading = true;
+    _errorMessage = null;
     notifyListeners();
 
     try {
@@ -104,18 +107,20 @@ class CrowdProvider with ChangeNotifier {
         await _loadCrowdDataFromFirestore(eventId);
       }
 
-      // Fallback to dummy data if Firestore is empty
-      if (_crowdData.isEmpty) {
+      // Fallback to dummy data only in development mode
+      if (_crowdData.isEmpty && AppConfig.useDummyDataFallback) {
         _crowdData = DummyData.crowdDensityData;
         _zones = DummyData.zones;
       }
 
       _lastUpdated = DateTime.now();
     } catch (e) {
+      _errorMessage = 'Failed to load crowd data';
       debugPrint('Error initializing crowd data: $e');
-      // Fallback to dummy data
-      _crowdData = DummyData.crowdDensityData;
-      _zones = DummyData.zones;
+      if (AppConfig.useDummyDataFallback) {
+        _crowdData = DummyData.crowdDensityData;
+        _zones = DummyData.zones;
+      }
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -156,7 +161,7 @@ class CrowdProvider with ChangeNotifier {
     _currentEventId = eventId ?? _currentEventId;
 
     if (_currentEventId != null) {
-      // Listen to crowd density updates
+      // Listen to crowd density updates from Firestore
       _crowdSubscription?.cancel();
       _crowdSubscription = _firestore
           .collection('crowd_density')
@@ -164,20 +169,28 @@ class CrowdProvider with ChangeNotifier {
           .orderBy('timestamp', descending: true)
           .limit(50)
           .snapshots()
-          .listen((snapshot) {
-        _processCrowdSnapshot(snapshot);
-      });
+          .listen(
+        (snapshot) => _processCrowdSnapshot(snapshot),
+        onError: (e) {
+          debugPrint('Crowd density stream error: $e');
+          // Fall back to simulated updates if Firestore stream fails in dev
+          if (AppConfig.enableSimulatedUpdates) {
+            _startSimulatedUpdates();
+          }
+        },
+      );
 
       // Listen to zone updates
       _zonesSubscription?.cancel();
       _zonesSubscription = _firestore
           .collection('zones')
           .snapshots()
-          .listen((snapshot) {
-        _processZonesSnapshot(snapshot);
-      });
-    } else {
-      // Use simulated updates for demo mode
+          .listen(
+        (snapshot) => _processZonesSnapshot(snapshot),
+        onError: (e) => debugPrint('Zone stream error: $e'),
+      );
+    } else if (AppConfig.enableSimulatedUpdates) {
+      // Use simulated updates only in development mode
       _startSimulatedUpdates();
     }
   }
@@ -199,6 +212,7 @@ class CrowdProvider with ChangeNotifier {
     if (latestByZone.isNotEmpty) {
       _crowdData = latestByZone.values.toList();
       _lastUpdated = DateTime.now();
+      _errorMessage = null;
       notifyListeners();
     }
   }
@@ -216,12 +230,13 @@ class CrowdProvider with ChangeNotifier {
     }
   }
 
-  // Start simulated updates (for demo mode)
+  // Start simulated updates (development mode only)
   Timer? _simulatedTimer;
   void _startSimulatedUpdates() {
+    if (!AppConfig.enableSimulatedUpdates) return;
     _simulatedTimer?.cancel();
     _simulatedTimer = Timer.periodic(
-      AppConstants.crowdUpdateInterval,
+      AppConfig.crowdUpdateInterval,
       (_) => _simulateUpdate(),
     );
   }
@@ -253,13 +268,14 @@ class CrowdProvider with ChangeNotifier {
         await _loadCrowdDataFromFirestore(_currentEventId!);
       }
 
-      // Fallback to dummy data
-      if (_crowdData.isEmpty) {
+      if (_crowdData.isEmpty && AppConfig.useDummyDataFallback) {
         _crowdData = DummyData.crowdDensityData;
       }
 
       _lastUpdated = DateTime.now();
+      _errorMessage = null;
     } catch (e) {
+      _errorMessage = 'Failed to refresh crowd data';
       debugPrint('Error refreshing crowd data: $e');
     } finally {
       _isLoading = false;
@@ -272,7 +288,10 @@ class CrowdProvider with ChangeNotifier {
     try {
       return _zones.firstWhere((z) => z.id == zoneId);
     } catch (e) {
-      return DummyData.getZoneById(zoneId);
+      if (AppConfig.useDummyDataFallback) {
+        return DummyData.getZoneById(zoneId);
+      }
+      return null;
     }
   }
 

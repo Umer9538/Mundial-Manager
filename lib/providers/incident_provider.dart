@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:latlong2/latlong.dart';
 import '../models/incident.dart';
 import '../services/database_service.dart';
+import '../core/config/environment.dart';
 import '../core/utils/dummy_data.dart';
 import '../core/constants/constants.dart';
 
@@ -67,25 +68,26 @@ class IncidentProvider with ChangeNotifier {
   // Initialize incidents
   Future<void> initialize({String? eventId}) async {
     _isLoading = true;
+    _errorMessage = null;
     notifyListeners();
 
     try {
       _currentEventId = eventId;
 
       if (eventId != null) {
-        // Load from Firestore
         await _loadIncidentsFromFirestore(eventId);
       }
 
-      // Fallback to dummy data if Firestore is empty
-      if (_incidents.isEmpty) {
+      // Fallback to dummy data only in development mode
+      if (_incidents.isEmpty && AppConfig.useDummyDataFallback) {
         _incidents = List.from(DummyData.incidents);
       }
     } catch (e) {
       _errorMessage = 'Failed to load incidents';
       debugPrint('Error initializing incidents: $e');
-      // Fallback to dummy data
-      _incidents = List.from(DummyData.incidents);
+      if (AppConfig.useDummyDataFallback) {
+        _incidents = List.from(DummyData.incidents);
+      }
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -125,9 +127,10 @@ class IncidentProvider with ChangeNotifier {
           .where('eventId', isEqualTo: _currentEventId)
           .orderBy('createdAt', descending: true)
           .snapshots()
-          .listen((snapshot) {
-        _processIncidentSnapshot(snapshot);
-      });
+          .listen(
+        (snapshot) => _processIncidentSnapshot(snapshot),
+        onError: (e) => debugPrint('Incident stream error: $e'),
+      );
     }
   }
 
@@ -139,6 +142,7 @@ class IncidentProvider with ChangeNotifier {
         ...doc.data() as Map<String, dynamic>,
       });
     }).toList();
+    _errorMessage = null;
     notifyListeners();
   }
 
@@ -165,7 +169,7 @@ class IncidentProvider with ChangeNotifier {
 
     try {
       final newIncident = Incident(
-        id: '', // Will be set by Firestore
+        id: '',
         eventId: eventId,
         reportedBy: reportedBy,
         reportedByName: reportedByName,
@@ -183,22 +187,9 @@ class IncidentProvider with ChangeNotifier {
       final docId = await _databaseService.createIncident(newIncident);
 
       // Add to local list with Firestore ID
-      final incidentWithId = Incident(
-        id: docId,
-        eventId: eventId,
-        reportedBy: reportedBy,
-        reportedByName: reportedByName,
-        location: location,
-        type: type,
-        description: description,
-        severity: severity,
-        status: AppConstants.statusReported,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-        imageUrls: imageUrls,
-      );
-
+      final incidentWithId = newIncident.copyWith(id: docId);
       _incidents.insert(0, incidentWithId);
+
       _isLoading = false;
       notifyListeners();
       return true;
@@ -223,7 +214,6 @@ class IncidentProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      // Update in Firestore
       await _databaseService.updateIncidentStatus(
         incidentId: incidentId,
         status: newStatus,
@@ -299,8 +289,7 @@ class IncidentProvider with ChangeNotifier {
         await _loadIncidentsFromFirestore(_currentEventId!);
       }
 
-      // Fallback to dummy data
-      if (_incidents.isEmpty) {
+      if (_incidents.isEmpty && AppConfig.useDummyDataFallback) {
         _incidents = List.from(DummyData.incidents);
       }
       _errorMessage = null;
