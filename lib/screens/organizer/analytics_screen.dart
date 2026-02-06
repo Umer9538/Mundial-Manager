@@ -4,10 +4,10 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import '../../core/theme/app_colors.dart';
+import '../../services/database_service.dart';
 import '../../providers/analytics_provider.dart';
 import '../../widgets/common/gradient_scaffold.dart';
 import '../../widgets/common/glass_card.dart';
-// Using provider data instead of DummyData
 
 class AnalyticsScreen extends StatefulWidget {
   const AnalyticsScreen({super.key});
@@ -29,9 +29,10 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   }
 
   Future<void> _initializeData() async {
+    final event = await DatabaseService().getCurrentActiveEvent();
     final analyticsProvider =
         Provider.of<AnalyticsProvider>(context, listen: false);
-    await analyticsProvider.initialize('current_event');
+    await analyticsProvider.initialize(event?.id ?? '');
   }
 
   Future<void> _selectDateRange() async {

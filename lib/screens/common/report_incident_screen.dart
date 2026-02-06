@@ -7,6 +7,7 @@ import 'package:latlong2/latlong.dart';
 import '../../core/theme/app_colors.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/incident_provider.dart';
+import '../../services/database_service.dart';
 import '../../services/storage_service.dart';
 import '../../widgets/common/gradient_scaffold.dart';
 import '../../widgets/common/glass_card.dart';
@@ -140,8 +141,10 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
       // Default location (King Fahd Stadium, Riyadh)
       const defaultLocation = LatLng(24.7136, 46.6753);
 
+      final event = await DatabaseService().getCurrentActiveEvent();
+
       final success = await incidentProvider.reportIncident(
-        eventId: 'current_event',
+        eventId: event?.id ?? '',
         reportedBy: user.id,
         reportedByName: user.name,
         location: defaultLocation,

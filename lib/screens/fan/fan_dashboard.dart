@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
 import '../../core/theme/app_colors.dart';
+import '../../models/event.dart';
+import '../../services/database_service.dart';
 import '../../providers/crowd_provider.dart';
 import '../../providers/alert_provider.dart';
 import '../../providers/auth_provider.dart';
@@ -26,6 +29,8 @@ class FanDashboard extends StatefulWidget {
 
 class _FanDashboardState extends State<FanDashboard> {
   int _selectedIndex = 0;
+  Event? _currentEvent;
+  String? _eventVenueAddress;
 
   @override
   void initState() {
@@ -37,12 +42,40 @@ class _FanDashboardState extends State<FanDashboard> {
     final crowdProvider = Provider.of<CrowdProvider>(context, listen: false);
     final alertProvider = Provider.of<AlertProvider>(context, listen: false);
 
+    // Load current active event from Firestore
+    await _loadCurrentEvent();
+
+    final eventId = _currentEvent?.id;
+
     await Future.wait([
-      crowdProvider.initialize(),
-      alertProvider.initialize(),
+      crowdProvider.initialize(eventId: eventId),
+      alertProvider.initialize(eventId: eventId),
     ]);
 
-    crowdProvider.startRealTimeUpdates();
+    crowdProvider.startRealTimeUpdates(eventId: eventId);
+  }
+
+  Future<void> _loadCurrentEvent() async {
+    try {
+      final dbService = DatabaseService();
+      final event = await dbService.getCurrentActiveEvent();
+      if (!mounted) return;
+
+      setState(() {
+        _currentEvent = event;
+      });
+
+      if (event != null) {
+        final address = await dbService.getVenueAddress(event.venueId);
+        if (mounted) {
+          setState(() {
+            _eventVenueAddress = address;
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Error loading current event: $e');
+    }
   }
 
   @override
@@ -67,7 +100,11 @@ class _FanDashboardState extends State<FanDashboard> {
         body: IndexedStack(
           index: _selectedIndex,
           children: [
-            _HomeTab(onNavigate: _onItemTapped),
+            _HomeTab(
+              onNavigate: _onItemTapped,
+              currentEvent: _currentEvent,
+              venueAddress: _eventVenueAddress,
+            ),
             const VenueMapScreen(),
             const NotificationsScreen(),
             const FanProfileScreen(),
@@ -230,8 +267,14 @@ class _BadgeCount extends StatelessWidget {
 
 class _HomeTab extends StatelessWidget {
   final Function(int) onNavigate;
+  final Event? currentEvent;
+  final String? venueAddress;
 
-  const _HomeTab({required this.onNavigate});
+  const _HomeTab({
+    required this.onNavigate,
+    this.currentEvent,
+    this.venueAddress,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -290,7 +333,7 @@ class _HomeTab extends StatelessWidget {
                     const SizedBox(height: 16),
 
                     // Current Event Card with Mundial Manager header
-                    _buildEventCard(context, alertProvider),
+                    _buildEventCard(context, alertProvider, currentEvent, venueAddress),
                     const SizedBox(height: 24),
 
                     // Action Buttons
@@ -329,7 +372,7 @@ class _HomeTab extends StatelessWidget {
     );
   }
 
-  Widget _buildEventCard(BuildContext context, AlertProvider alertProvider) {
+  Widget _buildEventCard(BuildContext context, AlertProvider alertProvider, Event? event, String? venueAddress) {
     final unreadCount = alertProvider.getAlertsForRole('fan').length;
 
     return GlassCard(
@@ -397,69 +440,105 @@ class _HomeTab extends StatelessWidget {
           ),
           const SizedBox(height: 16),
 
-          // Current Event label
-          Text(
-            'Current Event:',
-            style: GoogleFonts.roboto(
-              fontSize: 13,
-              color: Colors.white60,
-            ),
-          ),
-          const SizedBox(height: 6),
-
-          // Event name
-          Text(
-            'Al-Taawoun FC vs NEOM SC',
-            style: GoogleFonts.montserrat(
-              fontSize: 19,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
-          ),
-          const SizedBox(height: 10),
-
-          // League name
-          Text(
-            'Saudi Pro League',
-            style: GoogleFonts.roboto(
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-              color: AppColors.softTealBlue,
-            ),
-          ),
-          const SizedBox(height: 2),
-
-          // Date
-          Text(
-            'Nov 23 - Nov 25',
-            style: GoogleFonts.roboto(
-              fontSize: 13,
-              color: Colors.white54,
-            ),
-          ),
-          const SizedBox(height: 6),
-
-          // Location
-          Row(
-            children: [
-              Icon(
-                Icons.location_on_outlined,
-                size: 14,
-                color: Colors.white54,
+          if (event != null) ...[
+            // Current Event label
+            Text(
+              'Current Event:',
+              style: GoogleFonts.roboto(
+                fontSize: 13,
+                color: Colors.white60,
               ),
-              const SizedBox(width: 4),
+            ),
+            const SizedBox(height: 6),
+
+            // Event name
+            Text(
+              event.name,
+              style: GoogleFonts.montserrat(
+                fontSize: 19,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 10),
+
+            // Description (league/category)
+            if (event.description != null)
               Text(
-                'Riyadh, SA',
+                event.description!,
                 style: GoogleFonts.roboto(
-                  fontSize: 13,
-                  color: Colors.white54,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.softTealBlue,
                 ),
               ),
-            ],
-          ),
+            const SizedBox(height: 2),
+
+            // Date
+            Text(
+              _formatEventDate(event.startDate, event.endDate),
+              style: GoogleFonts.roboto(
+                fontSize: 13,
+                color: Colors.white54,
+              ),
+            ),
+            const SizedBox(height: 6),
+
+            // Location
+            if (venueAddress != null)
+              Row(
+                children: [
+                  Icon(
+                    Icons.location_on_outlined,
+                    size: 14,
+                    color: Colors.white54,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    venueAddress,
+                    style: GoogleFonts.roboto(
+                      fontSize: 13,
+                      color: Colors.white54,
+                    ),
+                  ),
+                ],
+              ),
+          ] else ...[
+            // No active event
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: Column(
+                  children: [
+                    Icon(
+                      Icons.event_busy_outlined,
+                      color: Colors.white38,
+                      size: 36,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'No active event',
+                      style: GoogleFonts.roboto(
+                        fontSize: 15,
+                        color: Colors.white54,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
+  }
+
+  String _formatEventDate(DateTime start, DateTime end) {
+    final dateFormat = DateFormat('MMM d');
+    if (start.year == end.year && start.month == end.month && start.day == end.day) {
+      return '${dateFormat.format(start)}, ${DateFormat('h:mm a').format(start)} - ${DateFormat('h:mm a').format(end)}';
+    }
+    return '${dateFormat.format(start)} - ${dateFormat.format(end)}';
   }
 
   Widget _buildActionButtons(BuildContext context) {

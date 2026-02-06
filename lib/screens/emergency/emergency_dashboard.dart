@@ -7,6 +7,7 @@ import 'package:flutter_map/flutter_map.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/constants/constants.dart';
 import 'package:latlong2/latlong.dart';
+import '../../services/database_service.dart';
 import '../../providers/incident_provider.dart';
 import '../../providers/alert_provider.dart';
 import '../../providers/auth_provider.dart';
@@ -33,9 +34,12 @@ class _EmergencyDashboardState extends State<EmergencyDashboard> {
   }
 
   Future<void> _initializeData() async {
+    final event = await DatabaseService().getCurrentActiveEvent();
+    final eventId = event?.id;
+
     await Future.wait([
-      Provider.of<IncidentProvider>(context, listen: false).initialize(),
-      Provider.of<AlertProvider>(context, listen: false).initialize(),
+      Provider.of<IncidentProvider>(context, listen: false).initialize(eventId: eventId),
+      Provider.of<AlertProvider>(context, listen: false).initialize(eventId: eventId),
     ]);
   }
 

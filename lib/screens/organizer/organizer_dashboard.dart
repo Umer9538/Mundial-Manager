@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../core/theme/app_colors.dart';
+import '../../services/database_service.dart';
 import '../../providers/crowd_provider.dart';
 import '../../providers/incident_provider.dart';
 import '../../providers/alert_provider.dart';
@@ -25,6 +26,7 @@ class OrganizerDashboard extends StatefulWidget {
 
 class _OrganizerDashboardState extends State<OrganizerDashboard> {
   int _selectedIndex = 0;
+  String? _currentEventId;
 
   @override
   void initState() {
@@ -33,17 +35,21 @@ class _OrganizerDashboardState extends State<OrganizerDashboard> {
   }
 
   Future<void> _initializeData() async {
+    // Load current active event first
+    final event = await DatabaseService().getCurrentActiveEvent();
+    _currentEventId = event?.id;
+
     final crowdProvider = Provider.of<CrowdProvider>(context, listen: false);
     final incidentProvider = Provider.of<IncidentProvider>(context, listen: false);
     final alertProvider = Provider.of<AlertProvider>(context, listen: false);
 
     await Future.wait([
-      crowdProvider.initialize(),
-      incidentProvider.initialize(),
-      alertProvider.initialize(),
+      crowdProvider.initialize(eventId: _currentEventId),
+      incidentProvider.initialize(eventId: _currentEventId),
+      alertProvider.initialize(eventId: _currentEventId),
     ]);
 
-    crowdProvider.startRealTimeUpdates();
+    crowdProvider.startRealTimeUpdates(eventId: _currentEventId);
   }
 
   void _onItemTapped(int index) {
@@ -243,7 +249,7 @@ class _OrganizerDashboardState extends State<OrganizerDashboard> {
                     final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
                     await alertProvider.sendAlert(
-                      eventId: 'current_event',
+                      eventId: _currentEventId ?? '',
                       createdBy: authProvider.currentUser!.id,
                       createdByName: authProvider.currentUser!.name,
                       type: 'info',

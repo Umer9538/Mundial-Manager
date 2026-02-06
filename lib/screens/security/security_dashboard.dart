@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../core/theme/app_colors.dart';
+import '../../services/database_service.dart';
 import '../../providers/crowd_provider.dart';
 import '../../providers/incident_provider.dart';
 import '../../providers/alert_provider.dart';
@@ -27,6 +28,7 @@ class SecurityDashboard extends StatefulWidget {
 class _SecurityDashboardState extends State<SecurityDashboard> {
   int _selectedIndex = 0;
   bool _isOnDuty = true;
+  String? _currentEventId;
 
   @override
   void initState() {
@@ -35,12 +37,17 @@ class _SecurityDashboardState extends State<SecurityDashboard> {
   }
 
   Future<void> _initializeData() async {
+    final event = await DatabaseService().getCurrentActiveEvent();
+    _currentEventId = event?.id;
+
+    final crowdProvider = Provider.of<CrowdProvider>(context, listen: false);
+
     await Future.wait([
-      Provider.of<CrowdProvider>(context, listen: false).initialize(),
-      Provider.of<IncidentProvider>(context, listen: false).initialize(),
-      Provider.of<AlertProvider>(context, listen: false).initialize(),
+      crowdProvider.initialize(eventId: _currentEventId),
+      Provider.of<IncidentProvider>(context, listen: false).initialize(eventId: _currentEventId),
+      Provider.of<AlertProvider>(context, listen: false).initialize(eventId: _currentEventId),
     ]);
-    Provider.of<CrowdProvider>(context, listen: false).startRealTimeUpdates();
+    crowdProvider.startRealTimeUpdates(eventId: _currentEventId);
   }
 
   void _onItemTapped(int index) {
@@ -261,7 +268,7 @@ class _SecurityDashboardState extends State<SecurityDashboard> {
                         ? crowdProv.allZones.first.center
                         : const LatLng(24.7257, 46.8222);
                     await incidentProvider.reportIncident(
-                      eventId: 'current_event',
+                      eventId: _currentEventId ?? '',
                       reportedBy: authProvider.currentUser!.id,
                       reportedByName: authProvider.currentUser!.name,
                       location: defaultLocation,

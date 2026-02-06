@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../core/theme/app_colors.dart';
+import '../../services/database_service.dart';
 import '../../providers/staff_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../models/staff_assignment.dart';
@@ -36,8 +37,9 @@ class _StaffManagementScreenState extends State<StaffManagementScreen>
   }
 
   Future<void> _initializeData() async {
+    final event = await DatabaseService().getCurrentActiveEvent();
     final staffProvider = Provider.of<StaffProvider>(context, listen: false);
-    await staffProvider.initialize('current_event');
+    await staffProvider.initialize(event?.id ?? '');
   }
 
   @override

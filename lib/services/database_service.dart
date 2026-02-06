@@ -40,16 +40,62 @@ class DatabaseService {
             }).toList());
   }
 
+  // Get current active event (most recent active event)
+  Future<Event?> getCurrentActiveEvent() async {
+    try {
+      final snapshot = await _firestore
+          .collection('events')
+          .where('status', isEqualTo: 'active')
+          .orderBy('startDate', descending: true)
+          .limit(1)
+          .get();
+
+      if (snapshot.docs.isNotEmpty) {
+        return _eventFromDoc(snapshot.docs.first);
+      }
+    } catch (e) {
+      // Firestore index may not exist yet, ignore
+    }
+    return null;
+  }
+
+  // Get venue address by ID
+  Future<String?> getVenueAddress(String venueId) async {
+    try {
+      final doc = await _firestore.collection('venues').doc(venueId).get();
+      if (doc.exists) {
+        return doc.data()?['address'] as String?;
+      }
+    } catch (e) {
+      // Ignore
+    }
+    return null;
+  }
+
   // Get event by ID
   Future<Event?> getEventById(String eventId) async {
     final doc = await _firestore.collection('events').doc(eventId).get();
     if (doc.exists) {
-      return Event.fromJson({
-        'id': doc.id,
-        ...doc.data()!,
-      });
+      return _eventFromDoc(doc);
     }
     return null;
+  }
+
+  // Build Event from Firestore doc, handling both Timestamp and String dates
+  Event _eventFromDoc(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    return Event.fromJson({
+      'id': doc.id,
+      ...data,
+      'startDate': _toIso8601(data['startDate']),
+      'endDate': _toIso8601(data['endDate']),
+    });
+  }
+
+  String _toIso8601(dynamic value) {
+    if (value is Timestamp) return value.toDate().toIso8601String();
+    if (value is String) return value;
+    return DateTime.now().toIso8601String();
   }
 
   // Create event
