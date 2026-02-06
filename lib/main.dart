@@ -3,14 +3,19 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'firebase_options.dart';
 import 'core/theme/app_theme.dart';
 import 'core/constants/constants.dart';
+import 'core/config/environment.dart';
 import 'core/routing/app_router.dart';
 import 'providers/auth_provider.dart';
 import 'providers/crowd_provider.dart';
 import 'providers/incident_provider.dart';
 import 'providers/alert_provider.dart';
+import 'providers/staff_provider.dart';
+import 'providers/analytics_provider.dart';
+import 'providers/message_provider.dart';
 
 // Background message handler - must be a top-level function
 @pragma('vm:entry-point')
@@ -28,6 +33,12 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
+  // Configure Firestore for offline persistence
+  FirebaseFirestore.instance.settings = const Settings(
+    persistenceEnabled: true,
+    cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
+  );
+
   // Set up background message handler
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
@@ -36,6 +47,10 @@ void main() async {
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
+
+  // Log current environment
+  debugPrint('Running in ${AppConfig.environment.name} mode');
+  debugPrint('Demo features: ${AppConfig.showDemoFeatures}');
 
   runApp(const MundialManagerApp());
 }
@@ -51,54 +66,15 @@ class MundialManagerApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => CrowdProvider()),
         ChangeNotifierProvider(create: (_) => IncidentProvider()),
         ChangeNotifierProvider(create: (_) => AlertProvider()),
+        ChangeNotifierProvider(create: (_) => StaffProvider()),
+        ChangeNotifierProvider(create: (_) => AnalyticsProvider()),
+        ChangeNotifierProvider(create: (_) => MessageProvider()),
       ],
       child: MaterialApp.router(
         title: AppConstants.appName,
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
         routerConfig: AppRouter.router,
-      ),
-    );
-  }
-}
-
-// Temporary home page - will be replaced with splash screen
-class TemporaryHomePage extends StatelessWidget {
-  const TemporaryHomePage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Mundial Manager 2035'),
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.stadium,
-              size: 80,
-              color: Theme.of(context).colorScheme.primary,
-            ),
-            const SizedBox(height: 24),
-            Text(
-              AppConstants.appName,
-              style: Theme.of(context).textTheme.displayMedium,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              AppConstants.appTagline,
-              style: Theme.of(context).textTheme.bodyMedium,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 48),
-            ElevatedButton(
-              onPressed: () {},
-              child: const Text('Get Started'),
-            ),
-          ],
-        ),
       ),
     );
   }
