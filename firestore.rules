@@ -2,133 +2,210 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper function to check if user is authenticated
+    // =============================================
+    // Helper Functions
+    // =============================================
+
+    // Check if the request is from an authenticated user
     function isAuthenticated() {
       return request.auth != null;
     }
 
-    // Helper function to check if user is the owner
+    // Check if the authenticated user owns the document by userId
     function isOwner(userId) {
       return isAuthenticated() && request.auth.uid == userId;
     }
 
-    // Helper function to get user role
+    // Get the role field from the current user's document
     function getUserRole() {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
     }
 
-    // Helper function to check if user has specific role
-    function hasRole(role) {
+    // Check if the authenticated user has a specific role
+    function isRole(role) {
       return isAuthenticated() && getUserRole() == role;
     }
 
-    // Helper function to check if user has any of the specified roles
-    function hasAnyRole(roles) {
+    // Check if the authenticated user has any of the specified roles
+    function hasRole(roles) {
       return isAuthenticated() && getUserRole() in roles;
     }
 
-    // Users collection
+    // Check if the user is a staff member (organizer, security, or emergency)
+    function isStaff() {
+      return hasRole(['organizer', 'security', 'emergency']);
+    }
+
+    // =============================================
+    // Users Collection
+    // =============================================
     match /users/{userId} {
       // Users can read their own profile
-      allow read: if isOwner(userId);
+      // Organizers can read all user profiles
+      // Security and Emergency can read staff user profiles
+      allow read: if isOwner(userId)
+        || isRole('organizer')
+        || (hasRole(['security', 'emergency'])
+            && get(/databases/$(database)/documents/users/$(userId)).data.role in ['organizer', 'security', 'emergency']);
 
-      // Users can update their own profile (except role)
-      allow update: if isOwner(userId) &&
-        (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role']));
-
-      // Only authenticated users can create their profile during registration
+      // Users can create their own profile during registration
       allow create: if isAuthenticated() && request.auth.uid == userId;
 
-      // Organizers can read all users
-      allow read: if hasRole('organizer');
-
-      // Organizers can update user roles
-      allow update: if hasRole('organizer');
+      // Users can update their own profile (but cannot change their role)
+      // Organizers can update any user profile (including role changes)
+      allow update: if (isOwner(userId)
+            && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role']))
+        || isRole('organizer');
     }
 
-    // Events collection
+    // =============================================
+    // Events Collection
+    // =============================================
     match /events/{eventId} {
-      // All authenticated users can read events
+      // Any authenticated user can read events
       allow read: if isAuthenticated();
 
-      // Only organizers can create/update/delete events
-      allow create, update, delete: if hasRole('organizer');
+      // Only organizers can create and update events
+      allow create, update: if isRole('organizer');
     }
 
-    // Venues collection
+    // =============================================
+    // Venues Collection
+    // =============================================
     match /venues/{venueId} {
-      // All authenticated users can read venues
+      // Any authenticated user can read venues
       allow read: if isAuthenticated();
 
-      // Only organizers can create/update venues
-      allow create, update: if hasRole('organizer');
+      // Only organizers can create and update venues
+      allow create, update: if isRole('organizer');
     }
 
-    // Zones collection
+    // =============================================
+    // Zones Collection
+    // =============================================
     match /zones/{zoneId} {
-      // All authenticated users can read zones
+      // Any authenticated user can read zones
       allow read: if isAuthenticated();
 
-      // Only organizers can create/update zones
-      allow create, update: if hasRole('organizer');
+      // Only organizers can create and update zones
+      allow create, update: if isRole('organizer');
     }
 
-    // Crowd density collection
+    // =============================================
+    // Crowd Density Collection
+    // =============================================
     match /crowd_density/{densityId} {
-      // All authenticated users can read crowd density
+      // Any authenticated user can read crowd density data
       allow read: if isAuthenticated();
 
-      // Organizers and security can write crowd density
-      allow create, update: if hasAnyRole(['organizer', 'security']);
+      // Only organizers can write crowd density data from the client
+      // Cloud Functions (admin SDK) bypass these rules entirely
+      allow create, update: if isRole('organizer');
     }
 
-    // Incidents collection
+    // =============================================
+    // Incidents Collection
+    // =============================================
     match /incidents/{incidentId} {
-      // All staff roles can read incidents
-      allow read: if hasAnyRole(['organizer', 'security', 'emergency']);
+      // Any authenticated user can read incidents
+      allow read: if isAuthenticated();
 
-      // Fans can read incidents they reported
-      allow read: if isAuthenticated() &&
-        resource.data.reportedBy == request.auth.uid;
+      // Security, Emergency, and Organizer roles can create incidents
+      allow create: if hasRole(['security', 'emergency', 'organizer']);
 
-      // All authenticated users can create incidents (report)
-      allow create: if isAuthenticated();
-
-      // Security and emergency can update incidents
-      allow update: if hasAnyRole(['organizer', 'security', 'emergency']);
+      // Organizer and Emergency can update incident status
+      allow update: if hasRole(['organizer', 'emergency']);
 
       // Only organizers can delete incidents
-      allow delete: if hasRole('organizer');
+      allow delete: if isRole('organizer');
     }
 
-    // Alerts collection
+    // =============================================
+    // Alerts Collection
+    // =============================================
     match /alerts/{alertId} {
-      // Users can read alerts targeted to their role
-      allow read: if isAuthenticated();
+      // Users can read alerts where their role is in the targetRoles array
+      allow read: if isAuthenticated()
+        && getUserRole() in resource.data.targetRoles;
 
-      // Only organizers can create alerts
-      allow create: if hasRole('organizer');
+      // Organizers can read all alerts regardless of targetRoles
+      allow read: if isRole('organizer');
 
-      // Organizers can update/delete alerts
-      allow update, delete: if hasRole('organizer');
+      // Only organizers can create, update, and delete alerts
+      allow create, update, delete: if isRole('organizer');
     }
 
-    // Notifications collection (in-app notifications)
+    // =============================================
+    // Location History Collection
+    // =============================================
+    match /location_history/{locationId} {
+      // Only the user themselves can write their own location data
+      allow create, update: if isAuthenticated()
+        && request.resource.data.userId == request.auth.uid;
+
+      // Only organizers, security, and Cloud Functions can read location data
+      // Cloud Functions (admin SDK) bypass these rules entirely
+      allow read: if hasRole(['organizer', 'security']);
+    }
+
+    // =============================================
+    // Staff Assignments Collection
+    // =============================================
+    match /staff_assignments/{assignmentId} {
+      // Organizers can perform all CRUD operations on staff assignments
+      allow read, create, update, delete: if isRole('organizer');
+
+      // Security and Emergency can read their own assignments
+      allow read: if hasRole(['security', 'emergency'])
+        && resource.data.staffId == request.auth.uid;
+    }
+
+    // =============================================
+    // Messages Collection
+    // =============================================
+    match /messages/{messageId} {
+      // Staff roles (organizer, security, emergency) can read and write messages
+      // Fans cannot access messages
+      allow read, create, update: if hasRole(['organizer', 'security', 'emergency']);
+
+      // Only organizers can delete messages
+      allow delete: if isRole('organizer');
+    }
+
+    // =============================================
+    // Notifications Collection
+    // =============================================
     match /notifications/{notificationId} {
       // Users can read their own notifications
-      allow read: if isAuthenticated() &&
-        resource.data.userId == request.auth.uid;
+      allow read: if isAuthenticated()
+        && resource.data.userId == request.auth.uid;
 
-      // Users can update their own notifications (mark as read)
-      allow update: if isAuthenticated() &&
-        resource.data.userId == request.auth.uid;
+      // Users can update their own notifications (e.g., mark as read)
+      allow update: if isAuthenticated()
+        && resource.data.userId == request.auth.uid;
 
-      // System can create notifications (via Cloud Functions)
-      allow create: if isAuthenticated();
+      // System creates notifications via Cloud Functions (admin SDK)
+      // Allow organizers to create notifications from client as fallback
+      allow create: if isRole('organizer');
+    }
 
-      // Users can delete their own notifications
-      allow delete: if isAuthenticated() &&
-        resource.data.userId == request.auth.uid;
+    // =============================================
+    // Analytics Collection
+    // =============================================
+    match /analytics/{analyticsId} {
+      // Only organizers can read and write analytics data
+      allow read, write: if isRole('organizer');
+    }
+
+    // =============================================
+    // Facilities Collection
+    // =============================================
+    match /facilities/{facilityId} {
+      // Any authenticated user can read facilities
+      allow read: if isAuthenticated();
+
+      // Only organizers can write (create, update, delete) facilities
+      allow write: if isRole('organizer');
     }
   }
 }
