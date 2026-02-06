@@ -12,6 +12,9 @@ class AuthService {
   // Auth state stream
   Stream<User?> get authStateChanges => _auth.authStateChanges();
 
+  // Check if current user's email is verified
+  bool get isEmailVerified => _auth.currentUser?.emailVerified ?? false;
+
   // Sign in with email and password
   Future<app_models.User?> signInWithEmailAndPassword({
     required String email,
@@ -24,6 +27,14 @@ class AuthService {
       );
 
       if (credential.user != null) {
+        // Update last login timestamp
+        await _firestore
+            .collection('users')
+            .doc(credential.user!.uid)
+            .update({
+          'lastLogin': FieldValue.serverTimestamp(),
+        }).catchError((_) {}); // Ignore if doc doesn't exist yet
+
         // Fetch user data from Firestore
         final userDoc = await _firestore
             .collection('users')
@@ -58,6 +69,9 @@ class AuthService {
       );
 
       if (credential.user != null) {
+        // Send email verification
+        await credential.user!.sendEmailVerification();
+
         // Create user document in Firestore
         final userData = {
           'email': email,
@@ -66,9 +80,12 @@ class AuthService {
           'phone': phone,
           'createdAt': FieldValue.serverTimestamp(),
           'updatedAt': FieldValue.serverTimestamp(),
+          'lastLogin': FieldValue.serverTimestamp(),
           'isActive': true,
+          'emailVerified': false,
           'assignedZones': <String>[],
           'profileImageUrl': null,
+          'locationSharingEnabled': false,
         };
 
         await _firestore
@@ -92,6 +109,33 @@ class AuthService {
     }
   }
 
+  // Send email verification
+  Future<void> sendEmailVerification() async {
+    final user = _auth.currentUser;
+    if (user != null && !user.emailVerified) {
+      await user.sendEmailVerification();
+    }
+  }
+
+  // Check email verification status
+  Future<bool> checkEmailVerified() async {
+    final user = _auth.currentUser;
+    if (user == null) return false;
+
+    await user.reload();
+    final isVerified = _auth.currentUser?.emailVerified ?? false;
+
+    if (isVerified) {
+      // Update Firestore record
+      await _firestore.collection('users').doc(user.uid).update({
+        'emailVerified': true,
+        'updatedAt': FieldValue.serverTimestamp(),
+      }).catchError((_) {});
+    }
+
+    return isVerified;
+  }
+
   // Sign out
   Future<void> signOut() async {
     await _auth.signOut();
@@ -110,7 +154,6 @@ class AuthService {
       }
       return null;
     } catch (e) {
-      print('Error getting user data: $e');
       return null;
     }
   }
@@ -122,6 +165,7 @@ class AuthService {
     String? phone,
     String? profileImageUrl,
     List<String>? assignedZones,
+    bool? locationSharingEnabled,
   }) async {
     final updates = <String, dynamic>{
       'updatedAt': FieldValue.serverTimestamp(),
@@ -131,6 +175,9 @@ class AuthService {
     if (phone != null) updates['phone'] = phone;
     if (profileImageUrl != null) updates['profileImageUrl'] = profileImageUrl;
     if (assignedZones != null) updates['assignedZones'] = assignedZones;
+    if (locationSharingEnabled != null) {
+      updates['locationSharingEnabled'] = locationSharingEnabled;
+    }
 
     await _firestore.collection('users').doc(uid).update(updates);
 
@@ -227,13 +274,15 @@ class AuthService {
       case 'invalid-email':
         return 'Invalid email address.';
       case 'weak-password':
-        return 'Password is too weak.';
+        return 'Password is too weak. Use at least 8 characters with 1 uppercase letter and 1 number.';
       case 'operation-not-allowed':
         return 'This sign-in method is not allowed.';
       case 'user-disabled':
         return 'This user account has been disabled.';
       case 'too-many-requests':
         return 'Too many requests. Please try again later.';
+      case 'invalid-credential':
+        return 'Invalid email or password.';
       default:
         return e.message ?? 'An error occurred during authentication.';
     }
