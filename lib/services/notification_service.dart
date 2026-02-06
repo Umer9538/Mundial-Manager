@@ -2,9 +2,23 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+/// Callback type for handling notification navigation
+typedef NotificationNavigationCallback = void Function(String type, String? referenceId);
+
 class NotificationService {
   final FirebaseMessaging _messaging = FirebaseMessaging.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  /// Optional navigation callback - set this from the app to enable deep linking
+  NotificationNavigationCallback? onNavigationRequested;
+
+  /// Store the last opened notification data for deferred handling
+  Map<String, dynamic>? _pendingNavigationData;
+  Map<String, dynamic>? get pendingNavigationData => _pendingNavigationData;
+
+  void clearPendingNavigation() {
+    _pendingNavigationData = null;
+  }
 
   // Initialize notifications
   Future<void> initialize() async {
@@ -19,26 +33,19 @@ class NotificationService {
       sound: true,
     );
 
-    if (kDebugMode) {
-      print('Notification permission status: ${settings.authorizationStatus}');
-    }
+    debugPrint('Notification permission status: ${settings.authorizationStatus}');
 
     // Get FCM token
     final token = await _messaging.getToken();
-    if (kDebugMode) {
-      print('FCM Token: $token');
-    }
+    debugPrint('FCM Token: ${token != null ? "obtained" : "null"}');
 
     // Listen to token refresh
     _messaging.onTokenRefresh.listen((newToken) {
-      if (kDebugMode) {
-        print('FCM Token refreshed: $newToken');
-      }
-      // Update token in Firestore if user is logged in
+      debugPrint('FCM Token refreshed');
       _updateTokenInFirestore(newToken);
     });
 
-    // Handle foreground messages
+    // Handle foreground messages - show as overlay
     FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
 
     // Handle background messages (when app is opened from notification)
@@ -49,6 +56,13 @@ class NotificationService {
     if (initialMessage != null) {
       _handleMessageOpenedApp(initialMessage);
     }
+
+    // Set foreground notification presentation options (iOS)
+    await _messaging.setForegroundNotificationPresentationOptions(
+      alert: true,
+      badge: true,
+      sound: true,
+    );
   }
 
   // Get FCM token
@@ -59,17 +73,13 @@ class NotificationService {
   // Subscribe to topic
   Future<void> subscribeToTopic(String topic) async {
     await _messaging.subscribeToTopic(topic);
-    if (kDebugMode) {
-      print('Subscribed to topic: $topic');
-    }
+    debugPrint('Subscribed to topic: $topic');
   }
 
   // Unsubscribe from topic
   Future<void> unsubscribeFromTopic(String topic) async {
     await _messaging.unsubscribeFromTopic(topic);
-    if (kDebugMode) {
-      print('Unsubscribed from topic: $topic');
-    }
+    debugPrint('Unsubscribed from topic: $topic');
   }
 
   // Subscribe to role-based topics
@@ -77,6 +87,7 @@ class NotificationService {
     // Subscribe to general and role-specific topics
     await subscribeToTopic('all');
     await subscribeToTopic(role);
+    await subscribeToTopic('general_announcements');
 
     // Role-specific subscriptions
     switch (role) {
@@ -105,6 +116,7 @@ class NotificationService {
   Future<void> unsubscribeFromAllTopics(String role) async {
     await unsubscribeFromTopic('all');
     await unsubscribeFromTopic(role);
+    await unsubscribeFromTopic('general_announcements');
     await unsubscribeFromTopic('staff');
     await unsubscribeFromTopic('alerts_high');
     await unsubscribeFromTopic('alerts_critical');
@@ -117,54 +129,62 @@ class NotificationService {
 
   // Save FCM token to Firestore
   Future<void> saveTokenToFirestore(String userId, String token) async {
-    await _firestore.collection('users').doc(userId).update({
-      'fcmToken': token,
-      'fcmTokenUpdatedAt': FieldValue.serverTimestamp(),
-    });
+    try {
+      await _firestore.collection('users').doc(userId).update({
+        'fcmToken': token,
+        'fcmTokenUpdatedAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      debugPrint('Error saving FCM token: $e');
+    }
   }
 
   // Update token in Firestore (called on token refresh)
+  String? _currentUserId;
+  void setCurrentUserId(String? userId) {
+    _currentUserId = userId;
+  }
+
   Future<void> _updateTokenInFirestore(String token) async {
-    // This should be called with the current user ID
-    // Implementation depends on how you manage auth state
+    if (_currentUserId != null) {
+      await saveTokenToFirestore(_currentUserId!, token);
+    }
   }
 
   // Handle foreground message
   void _handleForegroundMessage(RemoteMessage message) {
-    if (kDebugMode) {
-      print('Foreground message received:');
-      print('Title: ${message.notification?.title}');
-      print('Body: ${message.notification?.body}');
-      print('Data: ${message.data}');
-    }
+    debugPrint('Foreground message: ${message.notification?.title}');
 
-    // You can show a local notification or update UI here
-    // For now, we'll just log the message
+    // On iOS, the system will show the notification automatically due to
+    // setForegroundNotificationPresentationOptions above.
+    // On Android, FCM shows the notification automatically if there's
+    // a notification payload. For data-only messages, you'd need
+    // flutter_local_notifications.
+
+    // Notify any listeners about the new message
+    _onForegroundMessageCallback?.call(message);
+  }
+
+  /// Optional callback for foreground messages (e.g., to show in-app banners)
+  void Function(RemoteMessage)? _onForegroundMessageCallback;
+  set onForegroundMessage(void Function(RemoteMessage)? callback) {
+    _onForegroundMessageCallback = callback;
   }
 
   // Handle message when app is opened from notification
   void _handleMessageOpenedApp(RemoteMessage message) {
-    if (kDebugMode) {
-      print('App opened from notification:');
-      print('Title: ${message.notification?.title}');
-      print('Body: ${message.notification?.body}');
-      print('Data: ${message.data}');
-    }
+    debugPrint('App opened from notification: ${message.notification?.title}');
 
     // Navigate to appropriate screen based on message data
     final data = message.data;
-    if (data.containsKey('type')) {
-      switch (data['type']) {
-        case 'incident':
-          // Navigate to incident details
-          break;
-        case 'alert':
-          // Navigate to alerts screen
-          break;
-        case 'crowd_warning':
-          // Navigate to map/zone view
-          break;
-      }
+    final type = data['type'] as String?;
+    final referenceId = data['referenceId'] as String?;
+
+    if (type != null && onNavigationRequested != null) {
+      onNavigationRequested!(type, referenceId);
+    } else if (type != null) {
+      // Store for deferred handling if no callback is set yet
+      _pendingNavigationData = data;
     }
   }
 
@@ -174,6 +194,7 @@ class NotificationService {
     required String title,
     required String body,
     required String type,
+    String? referenceId,
     Map<String, dynamic>? data,
   }) async {
     await _firestore.collection('notifications').add({
@@ -181,6 +202,7 @@ class NotificationService {
       'title': title,
       'body': body,
       'type': type,
+      'referenceId': referenceId,
       'data': data,
       'isRead': false,
       'createdAt': FieldValue.serverTimestamp(),
@@ -240,5 +262,15 @@ class NotificationService {
     }
 
     await batch.commit();
+  }
+
+  // Get unread notification count
+  Stream<int> getUnreadCount(String userId) {
+    return _firestore
+        .collection('notifications')
+        .where('userId', isEqualTo: userId)
+        .where('isRead', isEqualTo: false)
+        .snapshots()
+        .map((snapshot) => snapshot.docs.length);
   }
 }
