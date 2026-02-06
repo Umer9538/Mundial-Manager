@@ -1,3 +1,6 @@
+# Compiled output
+lib/
+
 # Dependencies
 node_modules/
 
