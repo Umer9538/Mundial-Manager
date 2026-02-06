@@ -204,15 +204,17 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               children: [
                 Expanded(
                   child: _InfoBox(
-                    label: 'Crowd Density',
-                    value: '98%',
+                    label: 'Severity',
+                    value: _getSeverityLabel(alert.severity),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: _InfoBox(
                     label: 'Affected Zone',
-                    value: 'Zone A',
+                    value: alert.targetZones != null && alert.targetZones!.isNotEmpty
+                        ? alert.targetZones!.first.replaceAll('zone_', '').replaceAll('_', ' ')
+                        : 'All zones',
                   ),
                 ),
               ],

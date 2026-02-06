@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../core/theme/app_colors.dart';
+import '../../models/event.dart';
+import '../../services/database_service.dart';
 import '../../providers/crowd_provider.dart';
+import '../../providers/alert_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/map/crowd_heatmap.dart';
-import '../../core/constants/constants.dart';
 
 class VenueMapScreen extends StatefulWidget {
   const VenueMapScreen({super.key});
@@ -16,6 +18,33 @@ class VenueMapScreen extends StatefulWidget {
 
 class _VenueMapScreenState extends State<VenueMapScreen> {
   bool _showAlert = true;
+  Event? _currentEvent;
+  String? _venueName;
+  int? _venueCapacity;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadEventData();
+  }
+
+  Future<void> _loadEventData() async {
+    final dbService = DatabaseService();
+    final event = await dbService.getCurrentActiveEvent();
+    if (!mounted) return;
+    setState(() {
+      _currentEvent = event;
+    });
+    if (event != null) {
+      final venueDoc = await dbService.getVenueById(event.venueId);
+      if (mounted && venueDoc != null) {
+        setState(() {
+          _venueName = venueDoc.name;
+          _venueCapacity = venueDoc.capacity;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -84,52 +113,61 @@ class _VenueMapScreenState extends State<VenueMapScreen> {
               ),
             ),
 
-            // Alert Banner
+            // Alert Banner - shows most recent fan alert
             if (_showAlert)
-              Positioned(
-                top: MediaQuery.of(context).padding.top + 56,
-                left: 16,
-                right: 16,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFCC5A50),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.warning_amber, color: Colors.white, size: 24),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Zone B is crowded',
-                              style: GoogleFonts.montserrat(
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              'Move toward Gate 3 for a safer path.',
-                              style: GoogleFonts.roboto(
-                                fontSize: 12,
-                                color: Colors.white70,
-                              ),
-                            ),
-                          ],
-                        ),
+              Consumer<AlertProvider>(
+                builder: (context, alertProvider, _) {
+                  final fanAlerts = alertProvider.getAlertsForRole('fan');
+                  if (fanAlerts.isEmpty) return const SizedBox.shrink();
+                  final latestAlert = fanAlerts.first;
+                  return Positioned(
+                    top: MediaQuery.of(context).padding.top + 56,
+                    left: 16,
+                    right: 16,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFCC5A50),
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      GestureDetector(
-                        onTap: () => setState(() => _showAlert = false),
-                        child: const Icon(Icons.close, color: Colors.white70, size: 20),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.warning_amber, color: Colors.white, size: 24),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  latestAlert.typeDisplayName,
+                                  style: GoogleFonts.montserrat(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  latestAlert.message,
+                                  style: GoogleFonts.roboto(
+                                    fontSize: 12,
+                                    color: Colors.white70,
+                                  ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ),
+                          ),
+                          GestureDetector(
+                            onTap: () => setState(() => _showAlert = false),
+                            child: const Icon(Icons.close, color: Colors.white70, size: 20),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                ),
+                    ),
+                  );
+                },
               ),
 
             // POI Markers overlay
@@ -237,11 +275,6 @@ class _VenueMapScreenState extends State<VenueMapScreen> {
   }
 
   void _showEventInfo(BuildContext context) {
-    // Using constants for venue/event info
-    final venueName = AppConstants.venueName;
-    final eventName = AppConstants.eventName;
-    final venueCapacity = AppConstants.venueCapacity;
-
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -267,7 +300,7 @@ class _VenueMapScreenState extends State<VenueMapScreen> {
             ),
             const SizedBox(height: 20),
             Text(
-              venueName,
+              _venueName ?? 'Venue',
               style: GoogleFonts.montserrat(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
@@ -275,9 +308,10 @@ class _VenueMapScreenState extends State<VenueMapScreen> {
               ),
             ),
             const SizedBox(height: 12),
-            _InfoRow(label: 'Event', value: eventName),
-            _InfoRow(label: 'Capacity', value: '$venueCapacity'),
-            _InfoRow(label: 'Status', value: 'LIVE'),
+            _InfoRow(label: 'Event', value: _currentEvent?.name ?? 'No active event'),
+            if (_venueCapacity != null)
+              _InfoRow(label: 'Capacity', value: '$_venueCapacity'),
+            _InfoRow(label: 'Status', value: _currentEvent != null ? 'LIVE' : 'INACTIVE'),
             const SizedBox(height: 16),
           ],
         ),
