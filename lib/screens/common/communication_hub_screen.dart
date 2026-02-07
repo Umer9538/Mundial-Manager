@@ -92,6 +92,7 @@ class _CommunicationHubScreenState extends State<CommunicationHubScreen> {
     final isWideScreen = MediaQuery.of(context).size.width > 600;
 
     return GradientScaffold(
+      extendBodyBehindAppBar: false,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
