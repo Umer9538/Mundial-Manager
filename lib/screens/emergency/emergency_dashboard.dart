@@ -26,6 +26,7 @@ class EmergencyDashboard extends StatefulWidget {
 
 class _EmergencyDashboardState extends State<EmergencyDashboard> {
   int _selectedIndex = 0;
+  String? _venueName;
 
   @override
   void initState() {
@@ -34,8 +35,19 @@ class _EmergencyDashboardState extends State<EmergencyDashboard> {
   }
 
   Future<void> _initializeData() async {
-    final event = await DatabaseService().getCurrentActiveEvent();
+    final dbService = DatabaseService();
+    final event = await dbService.getCurrentActiveEvent();
     final eventId = event?.id;
+
+    // Load venue name
+    if (event != null) {
+      final venue = await dbService.getVenueById(event.venueId);
+      if (mounted && venue != null) {
+        setState(() {
+          _venueName = venue.name;
+        });
+      }
+    }
 
     await Future.wait([
       Provider.of<IncidentProvider>(context, listen: false).initialize(eventId: eventId),
@@ -59,7 +71,7 @@ class _EmergencyDashboardState extends State<EmergencyDashboard> {
         body: IndexedStack(
           index: _selectedIndex,
           children: [
-            _HomeTab(onNavigate: _onItemTapped),
+            _HomeTab(onNavigate: _onItemTapped, venueName: _venueName),
             _AlertsTab(onNavigate: _onItemTapped),
             const _MapTab(),
             const _ProfileTab(),
@@ -224,7 +236,8 @@ class _BadgeCount extends StatelessWidget {
 class _HomeTab extends StatefulWidget {
   final Function(int) onNavigate;
 
-  const _HomeTab({required this.onNavigate});
+  final String? venueName;
+  const _HomeTab({required this.onNavigate, this.venueName});
 
   @override
   State<_HomeTab> createState() => _HomeTabState();
@@ -262,7 +275,7 @@ class _HomeTabState extends State<_HomeTab> {
                       ),
                       const Spacer(),
                       Text(
-                        'King Fahd Stadium',
+                        widget.venueName ?? 'Emergency',
                         style: GoogleFonts.montserrat(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,

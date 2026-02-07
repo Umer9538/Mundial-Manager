@@ -143,7 +143,9 @@ class _SecurityDashboardState extends State<SecurityDashboard> {
 
   void _showReportIncidentSheet(BuildContext context) {
     final descriptionController = TextEditingController();
-    String selectedZone = 'Main Stage - Area A';
+    final crowdProvider = Provider.of<CrowdProvider>(context, listen: false);
+    final zones = crowdProvider.allZones;
+    String selectedZone = zones.isNotEmpty ? zones.first.name : '';
     String selectedType = 'crowd';
 
     showModalBottomSheet(
@@ -188,14 +190,11 @@ class _SecurityDashboardState extends State<SecurityDashboard> {
               CustomDropdownField<String>(
                 label: 'Select Zone',
                 hint: 'Choose zone',
-                value: selectedZone,
-                items: const [
-                  DropdownMenuItem(value: 'Main Stage - Area A', child: Text('Main Stage - Area A')),
-                  DropdownMenuItem(value: 'North Stand', child: Text('North Stand')),
-                  DropdownMenuItem(value: 'South Stand', child: Text('South Stand')),
-                  DropdownMenuItem(value: 'East Gate', child: Text('East Gate')),
-                  DropdownMenuItem(value: 'West Gate', child: Text('West Gate')),
-                ],
+                value: selectedZone.isNotEmpty ? selectedZone : null,
+                items: zones.map((zone) => DropdownMenuItem(
+                  value: zone.name,
+                  child: Text(zone.name),
+                )).toList(),
                 onChanged: (value) => selectedZone = value!,
               ),
               const SizedBox(height: 16),
@@ -534,32 +533,19 @@ class _DashboardTab extends StatelessWidget {
             ),
             const SizedBox(height: 12),
 
-            // Sample alert cards based on mockup
-            _AlertListItem(
-              title: 'Zone B - Density 87%',
-              subtitle: '14:32 - Main Stage area',
-              severity: 'critical',
-              onTap: () {},
-            ),
-            const SizedBox(height: 10),
-            _AlertListItem(
-              title: 'Gate 2 - Unauthorized Entry',
-              subtitle: '14:28 - Perimeter Checkpoint',
-              severity: 'high',
-              onTap: () {},
-            ),
-            const SizedBox(height: 10),
-            _AlertListItem(
-              title: 'First Aid Request',
-              subtitle: '14:25 - Sector 4 Food Court',
-              severity: 'medium',
-              onTap: () {},
-            ),
-
-            // Additional alerts from provider
-            if (alerts.isNotEmpty) ...[
-              const SizedBox(height: 10),
-              ...alerts.take(2).map((alert) => Padding(
+            if (alerts.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                child: Text(
+                  'No active alerts',
+                  style: GoogleFonts.roboto(
+                    fontSize: 14,
+                    color: Colors.white54,
+                  ),
+                ),
+              )
+            else
+              ...alerts.take(5).map((alert) => Padding(
                 padding: const EdgeInsets.only(bottom: 10),
                 child: _AlertListItem(
                   title: alert.typeDisplayName,
@@ -568,7 +554,6 @@ class _DashboardTab extends StatelessWidget {
                   onTap: () {},
                 ),
               )),
-            ],
           ],
         );
       },
@@ -746,53 +731,51 @@ class _MonitoringTab extends StatelessWidget {
                       crowdData: crowdProvider.crowdData,
                       zones: crowdProvider.allZones,
                     ),
-                    // Zone info overlay
-                    Positioned(
-                      left: 16,
-                      top: 16,
-                      child: GlassCard(
-                        padding: const EdgeInsets.all(12),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Zone D -',
-                              style: GoogleFonts.roboto(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.white,
+                    // Zone info overlay - shows highest density zone
+                    if (crowdProvider.crowdData.isNotEmpty)
+                      Positioned(
+                        left: 16,
+                        top: 16,
+                        child: Builder(
+                          builder: (context) {
+                            final sortedZones = List.of(crowdProvider.crowdData)
+                              ..sort((a, b) => b.occupancyPercentageRounded.compareTo(a.occupancyPercentageRounded));
+                            final topZone = sortedZones.first;
+                            final statusLabel = topZone.isCritical ? 'Critical' : topZone.needsAttention ? 'High Density' : 'Normal';
+                            final statusColor = topZone.isCritical ? AppColors.red : topZone.needsAttention ? AppColors.orange : AppColors.green;
+                            return GlassCard(
+                              padding: const EdgeInsets.all(12),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    topZone.zoneName,
+                                    style: GoogleFonts.roboto(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  Text(
+                                    statusLabel,
+                                    style: GoogleFonts.roboto(
+                                      fontSize: 12,
+                                      color: statusColor,
+                                    ),
+                                  ),
+                                  Text(
+                                    '${topZone.occupancyPercentageRounded}% Capacity',
+                                    style: GoogleFonts.roboto(
+                                      fontSize: 11,
+                                      color: Colors.white54,
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ),
-                            Text(
-                              'Overcrowding',
-                              style: GoogleFonts.roboto(
-                                fontSize: 12,
-                                color: AppColors.orange,
-                              ),
-                            ),
-                            Text(
-                              '85% Capacity',
-                              style: GoogleFonts.roboto(
-                                fontSize: 11,
-                                color: Colors.white54,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            GestureDetector(
-                              onTap: () {},
-                              child: Text(
-                                'View Details',
-                                style: GoogleFonts.roboto(
-                                  fontSize: 12,
-                                  color: AppColors.softTealBlue,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                          ],
+                            );
+                          },
                         ),
                       ),
-                    ),
                     // Density Legend
                     Positioned(
                       right: 16,

@@ -138,16 +138,23 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
         if (urls.isNotEmpty) imageUrls = urls;
       }
 
-      // Default location (King Fahd Stadium, Riyadh)
-      const defaultLocation = LatLng(24.7136, 46.6753);
+      final dbService = DatabaseService();
+      final event = await dbService.getCurrentActiveEvent();
 
-      final event = await DatabaseService().getCurrentActiveEvent();
+      // Load venue location for incident coordinates
+      LatLng incidentLocation = const LatLng(24.7136, 46.6753); // fallback
+      if (event != null) {
+        final venue = await dbService.getVenueById(event.venueId);
+        if (venue != null) {
+          incidentLocation = venue.coordinates;
+        }
+      }
 
       final success = await incidentProvider.reportIncident(
         eventId: event?.id ?? '',
         reportedBy: user.id,
         reportedByName: user.name,
-        location: defaultLocation,
+        location: incidentLocation,
         type: _selectedType,
         description: _descriptionController.text.trim(),
         severity: _selectedSeverity,

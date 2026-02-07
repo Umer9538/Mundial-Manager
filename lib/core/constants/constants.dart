@@ -80,12 +80,6 @@ class AppConstants {
   static const String alertTypeEmergency = 'emergency';
   static const String alertTypeInfo = 'info';
 
-  // Event Data
-  static const String eventName = 'FIFA World Cup 2026 - Semifinal';
-  static const String venueName = 'Lusail Stadium';
-  static const String venueLocation = 'Qatar';
-  static const int venueCapacity = 88966;
-
   // Password Validation
   static const int minPasswordLength = 8;
   static const int maxPasswordLength = 128;

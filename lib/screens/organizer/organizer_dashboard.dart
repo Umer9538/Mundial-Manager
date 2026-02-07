@@ -3,7 +3,10 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
 import '../../core/theme/app_colors.dart';
+import '../../models/event.dart';
 import '../../services/database_service.dart';
 import '../../providers/crowd_provider.dart';
 import '../../providers/incident_provider.dart';
@@ -15,7 +18,6 @@ import '../../widgets/common/custom_button.dart';
 import '../../widgets/common/custom_text_field.dart';
 import '../../widgets/common/profile_dialogs.dart';
 import '../../widgets/map/crowd_heatmap.dart';
-// DummyData import removed - using provider data instead
 
 class OrganizerDashboard extends StatefulWidget {
   const OrganizerDashboard({super.key});
@@ -27,6 +29,7 @@ class OrganizerDashboard extends StatefulWidget {
 class _OrganizerDashboardState extends State<OrganizerDashboard> {
   int _selectedIndex = 0;
   String? _currentEventId;
+  List<Event> _events = [];
 
   @override
   void initState() {
@@ -35,9 +38,14 @@ class _OrganizerDashboardState extends State<OrganizerDashboard> {
   }
 
   Future<void> _initializeData() async {
+    final dbService = DatabaseService();
+
     // Load current active event first
-    final event = await DatabaseService().getCurrentActiveEvent();
+    final event = await dbService.getCurrentActiveEvent();
     _currentEventId = event?.id;
+
+    // Load all events for the managed events list
+    await _loadEvents();
 
     final crowdProvider = Provider.of<CrowdProvider>(context, listen: false);
     final incidentProvider = Provider.of<IncidentProvider>(context, listen: false);
@@ -50,6 +58,38 @@ class _OrganizerDashboardState extends State<OrganizerDashboard> {
     ]);
 
     crowdProvider.startRealTimeUpdates(eventId: _currentEventId);
+  }
+
+  Future<void> _loadEvents() async {
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('events')
+          .orderBy('startDate', descending: true)
+          .limit(10)
+          .get();
+
+      if (mounted && snapshot.docs.isNotEmpty) {
+        setState(() {
+          _events = snapshot.docs.map((doc) {
+            final data = doc.data();
+            return Event.fromJson({
+              'id': doc.id,
+              ...data,
+              'startDate': _toIso8601(data['startDate']),
+              'endDate': _toIso8601(data['endDate']),
+            });
+          }).toList();
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading events: $e');
+    }
+  }
+
+  static String _toIso8601(dynamic value) {
+    if (value is Timestamp) return value.toDate().toIso8601String();
+    if (value is String) return value;
+    return DateTime.now().toIso8601String();
   }
 
   void _onItemTapped(int index) {
@@ -71,6 +111,7 @@ class _OrganizerDashboardState extends State<OrganizerDashboard> {
             _DashboardTab(
               onSendAlert: () => _showSendAlertDialog(context),
               onNavigate: _onItemTapped,
+              events: _events,
             ),
             _MapTab(),
             _AlertsTab(),
@@ -369,8 +410,13 @@ class _SeverityChip extends StatelessWidget {
 class _DashboardTab extends StatelessWidget {
   final VoidCallback onSendAlert;
   final Function(int) onNavigate;
+  final List<Event> events;
 
-  const _DashboardTab({required this.onSendAlert, required this.onNavigate});
+  const _DashboardTab({
+    required this.onSendAlert,
+    required this.onNavigate,
+    required this.events,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -516,35 +562,35 @@ class _DashboardTab extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    _EventCard(
-                      title: 'Annual Tech Summit',
-                      code: 'E-1024',
-                      date: '10/26/2024',
-                      icon: Icons.calendar_today,
-                      iconColor: AppColors.softTealBlue,
-                      status: 'Live',
-                      statusColor: AppColors.green,
-                    ),
-                    const SizedBox(height: 10),
-                    _EventCard(
-                      title: 'Music Fest 2024',
-                      code: 'E-1022',
-                      date: '09/15/2024',
-                      icon: Icons.music_note,
-                      iconColor: Colors.white,
-                      status: 'Upcoming',
-                      statusColor: AppColors.softTealBlue,
-                    ),
-                    const SizedBox(height: 10),
-                    _EventCard(
-                      title: 'Gaming Expo',
-                      code: 'E-1019',
-                      date: '08/01/2024',
-                      icon: Icons.sports_esports,
-                      iconColor: Colors.white,
-                      status: 'Ended',
-                      statusColor: Colors.white54,
-                    ),
+                    if (events.isEmpty)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        child: Text(
+                          'No events found',
+                          style: GoogleFonts.roboto(
+                            fontSize: 14,
+                            color: Colors.white54,
+                          ),
+                        ),
+                      )
+                    else
+                      ...events.map((event) {
+                        final statusLabel = event.isActive ? 'Live' : event.isUpcoming ? 'Upcoming' : 'Ended';
+                        final statusColor = event.isActive ? AppColors.green : event.isUpcoming ? AppColors.softTealBlue : Colors.white54;
+                        final dateStr = DateFormat('MM/dd/yyyy').format(event.startDate);
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: _EventCard(
+                            title: event.name,
+                            code: event.id.length > 8 ? event.id.substring(0, 8) : event.id,
+                            date: dateStr,
+                            icon: Icons.calendar_today,
+                            iconColor: event.isActive ? AppColors.softTealBlue : Colors.white,
+                            status: statusLabel,
+                            statusColor: statusColor,
+                          ),
+                        );
+                      }),
                     const SizedBox(height: 24),
 
                     // Live Event Map
