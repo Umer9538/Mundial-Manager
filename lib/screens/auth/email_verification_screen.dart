@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import '../../core/theme/app_colors.dart';
+import '../../l10n/app_localizations.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/common/gradient_scaffold.dart';
 import '../../widgets/common/glass_card.dart';
@@ -89,10 +90,11 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
       }
 
       if (!silent && mounted) {
+        final l = AppLocalizations.of(context)!;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Email not verified yet. Please check your inbox.',
+              l.emailNotVerified,
               style: GoogleFonts.roboto(color: Colors.white),
             ),
             backgroundColor: AppColors.orange,
@@ -101,10 +103,11 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
       }
     } catch (e) {
       if (!silent && mounted) {
+        final l = AppLocalizations.of(context)!;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Error checking verification status',
+              l.verificationCheckError,
               style: GoogleFonts.roboto(color: Colors.white),
             ),
             backgroundColor: AppColors.red,
@@ -129,10 +132,11 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
         await firebaseUser.sendEmailVerification();
 
         if (mounted) {
+          final l = AppLocalizations.of(context)!;
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                'Verification email sent!',
+                l.emailSentSuccess,
                 style: GoogleFonts.roboto(color: Colors.white),
               ),
               backgroundColor: AppColors.green,
@@ -143,10 +147,11 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
       }
     } catch (e) {
       if (mounted) {
+        final l = AppLocalizations.of(context)!;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Failed to send verification email. Please try again.',
+              l.emailSendFailed,
               style: GoogleFonts.roboto(color: Colors.white),
             ),
             backgroundColor: AppColors.red,
@@ -180,8 +185,9 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     final authProvider = Provider.of<AuthProvider>(context);
-    final email = authProvider.currentUser?.email ?? 'your email';
+    final email = authProvider.currentUser?.email ?? AppLocalizations.of(context)!.yourEmail;
 
     return GradientScaffold(
       body: SafeArea(
@@ -217,7 +223,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
                 child: Column(
                   children: [
                     Text(
-                      'Verify Your Email',
+                      l.verifyEmailTitle,
                       style: GoogleFonts.montserrat(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
@@ -228,7 +234,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
                     const SizedBox(height: 16),
 
                     Text(
-                      'We\'ve sent a verification email to:',
+                      l.emailSentTo,
                       style: GoogleFonts.roboto(
                         fontSize: 14,
                         color: Colors.white70,
@@ -258,9 +264,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
                     const SizedBox(height: 20),
 
                     Text(
-                      'Please check your inbox and click the verification link '
-                      'to activate your account. If you don\'t see the email, '
-                      'check your spam or junk folder.',
+                      l.verifyEmailInstructions,
                       style: GoogleFonts.roboto(
                         fontSize: 14,
                         color: Colors.white54,
@@ -273,8 +277,8 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
                     // Verify button
                     CustomButton.primary(
                       text: _isCheckingVerification
-                          ? 'Checking...'
-                          : 'I\'ve Verified, Continue',
+                          ? l.checkingStatus
+                          : l.verifyAndContinue,
                       icon: Icons.check_circle_outline,
                       isLoading: _isCheckingVerification,
                       onPressed: _isCheckingVerification
@@ -325,8 +329,8 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
                                   const SizedBox(width: 8),
                                   Text(
                                     _resendCooldown > 0
-                                        ? 'Resend Email ($_resendCooldown s)'
-                                        : 'Resend Verification Email',
+                                        ? l.resendEmailCooldown(_resendCooldown)
+                                        : l.resendEmail,
                                     style: GoogleFonts.roboto(
                                       fontSize: 16,
                                       fontWeight: FontWeight.w600,
@@ -350,7 +354,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
                               size: 14, color: Colors.white38),
                           const SizedBox(width: 4),
                           Text(
-                            'You can resend in $_resendCooldown seconds',
+                            l.canResendIn(_resendCooldown),
                             style: GoogleFonts.roboto(
                               fontSize: 12,
                               color: Colors.white38,
@@ -373,8 +377,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        'Having trouble? Make sure to check your spam folder. '
-                        'The email may take a few minutes to arrive.',
+                        l.verifyEmailHelp,
                         style: GoogleFonts.roboto(
                           fontSize: 12,
                           color: Colors.white54,
@@ -388,17 +391,19 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
               const SizedBox(height: 24),
 
               // Back to login
-              GestureDetector(
-                onTap: () async {
-                  final authProvider =
-                      Provider.of<AuthProvider>(context, listen: false);
-                  await authProvider.logout();
+              TextButton(
+                onPressed: () async {
+                  try {
+                    final authProvider =
+                        Provider.of<AuthProvider>(context, listen: false);
+                    await authProvider.logout();
+                  } catch (_) {}
                   if (mounted) {
                     context.go('/login');
                   }
                 },
                 child: Text(
-                  'Back to Login',
+                  l.backToLogin,
                   style: GoogleFonts.roboto(
                     fontSize: 14,
                     color: AppColors.softTealBlue,

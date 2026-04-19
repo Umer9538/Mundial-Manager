@@ -4,8 +4,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:latlong2/latlong.dart';
 import '../models/incident.dart';
 import '../services/database_service.dart';
-import '../core/config/environment.dart';
-import '../core/utils/dummy_data.dart';
 import '../core/constants/constants.dart';
 
 class IncidentProvider with ChangeNotifier {
@@ -78,16 +76,9 @@ class IncidentProvider with ChangeNotifier {
         await _loadIncidentsFromFirestore(eventId);
       }
 
-      // Fallback to dummy data only in development mode
-      if (_incidents.isEmpty && AppConfig.useDummyDataFallback) {
-        _incidents = List.from(DummyData.incidents);
-      }
     } catch (e) {
       _errorMessage = 'Failed to load incidents';
       debugPrint('Error initializing incidents: $e');
-      if (AppConfig.useDummyDataFallback) {
-        _incidents = List.from(DummyData.incidents);
-      }
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -289,9 +280,6 @@ class IncidentProvider with ChangeNotifier {
         await _loadIncidentsFromFirestore(_currentEventId!);
       }
 
-      if (_incidents.isEmpty && AppConfig.useDummyDataFallback) {
-        _incidents = List.from(DummyData.incidents);
-      }
       _errorMessage = null;
     } catch (e) {
       _errorMessage = 'Failed to refresh incidents';

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../l10n/app_localizations.dart';
 import '../../core/theme/app_colors.dart';
 import '../../services/database_service.dart';
 import '../../providers/staff_provider.dart';
@@ -38,8 +39,14 @@ class _StaffManagementScreenState extends State<StaffManagementScreen>
 
   Future<void> _initializeData() async {
     final event = await DatabaseService().getCurrentActiveEvent();
+    final eventId = event?.id ?? '';
     final staffProvider = Provider.of<StaffProvider>(context, listen: false);
-    await staffProvider.initialize(event?.id ?? '');
+    final crowdProvider = Provider.of<CrowdProvider>(context, listen: false);
+    await Future.wait([
+      staffProvider.initialize(eventId),
+      if (crowdProvider.allZones.isEmpty)
+        crowdProvider.initialize(eventId: eventId),
+    ]);
   }
 
   @override
@@ -50,7 +57,7 @@ class _StaffManagementScreenState extends State<StaffManagementScreen>
         backgroundColor: Colors.transparent,
         elevation: 0,
         title: Text(
-          'Staff Management',
+          AppLocalizations.of(context)!.staffManagement,
           style: GoogleFonts.montserrat(
             fontSize: 20,
             fontWeight: FontWeight.bold,
@@ -74,10 +81,10 @@ class _StaffManagementScreenState extends State<StaffManagementScreen>
             fontSize: 14,
             fontWeight: FontWeight.normal,
           ),
-          tabs: const [
-            Tab(text: 'All Staff'),
-            Tab(text: 'Assignments'),
-            Tab(text: 'Zones'),
+          tabs: [
+            Tab(text: AppLocalizations.of(context)!.allStaffTab),
+            Tab(text: AppLocalizations.of(context)!.assignmentsTab),
+            Tab(text: AppLocalizations.of(context)!.zonesTab),
           ],
         ),
       ),
@@ -121,12 +128,12 @@ class _AllStaffTab extends StatelessWidget {
             const Icon(Icons.people_outline, size: 64, color: Colors.white24),
             const SizedBox(height: 16),
             Text(
-              'No staff members found',
+              AppLocalizations.of(context)!.noStaffFound,
               style: GoogleFonts.roboto(fontSize: 16, color: Colors.white54),
             ),
             const SizedBox(height: 8),
             Text(
-              'Security and emergency staff will appear here',
+              AppLocalizations.of(context)!.securityAndEmergencyStaffWillAppear,
               style: GoogleFonts.roboto(fontSize: 13, color: Colors.white38),
             ),
           ],
@@ -189,7 +196,7 @@ class _AllStaffTab extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Assign Staff',
+                    AppLocalizations.of(context)!.assignStaffTitle,
                     style: GoogleFonts.montserrat(
                       fontSize: 22,
                       fontWeight: FontWeight.bold,
@@ -249,7 +256,7 @@ class _AllStaffTab extends StatelessWidget {
               ),
               const SizedBox(height: 24),
               Text(
-                'Select Zone',
+                AppLocalizations.of(context)!.selectZoneLabel,
                 style: GoogleFonts.roboto(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
@@ -269,7 +276,7 @@ class _AllStaffTab extends StatelessWidget {
                 child: DropdownButton<String>(
                   value: selectedZoneId,
                   hint: Text(
-                    'Choose a zone',
+                    AppLocalizations.of(context)!.chooseZoneHint,
                     style: GoogleFonts.roboto(
                       color: Colors.white38,
                       fontSize: 16,
@@ -311,7 +318,7 @@ class _AllStaffTab extends StatelessWidget {
               ),
               const SizedBox(height: 24),
               CustomButton.primary(
-                text: 'Assign to Zone',
+                text: AppLocalizations.of(context)!.assignToZone,
                 icon: Icons.assignment_ind,
                 onPressed: selectedZoneId == null
                     ? null
@@ -338,7 +345,7 @@ class _AllStaffTab extends StatelessWidget {
                             SnackBar(
                               content: Text(success
                                   ? '${staff.name} assigned to ${zone.name}'
-                                  : 'Failed to assign staff'),
+                                  : AppLocalizations.of(context)!.failedToAssignStaff),
                               backgroundColor:
                                   success ? AppColors.green : AppColors.red,
                             ),
@@ -348,7 +355,7 @@ class _AllStaffTab extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               CustomButton.secondary(
-                text: 'Cancel',
+                text: AppLocalizations.of(context)!.cancelButton,
                 onPressed: () => Navigator.pop(context),
               ),
               SizedBox(height: MediaQuery.of(context).padding.bottom),
@@ -377,7 +384,7 @@ class _StaffSummaryCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Staff Overview',
+              AppLocalizations.of(context)!.staffOverview,
               style: GoogleFonts.montserrat(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -388,28 +395,28 @@ class _StaffSummaryCard extends StatelessWidget {
             Row(
               children: [
                 _StatItem(
-                  label: 'Security',
+                  label: AppLocalizations.of(context)!.security,
                   value: '${staffProvider.securityStaff.length}',
                   color: AppColors.blue,
                   icon: Icons.security,
                 ),
                 const SizedBox(width: 16),
                 _StatItem(
-                  label: 'Emergency',
+                  label: AppLocalizations.of(context)!.emergency,
                   value: '${staffProvider.emergencyStaff.length}',
                   color: AppColors.red,
                   icon: Icons.medical_services,
                 ),
                 const SizedBox(width: 16),
                 _StatItem(
-                  label: 'Assigned',
+                  label: AppLocalizations.of(context)!.assignedLabel,
                   value: '${stats['active'] ?? 0}',
                   color: AppColors.green,
                   icon: Icons.assignment_turned_in,
                 ),
                 const SizedBox(width: 16),
                 _StatItem(
-                  label: 'Available',
+                  label: AppLocalizations.of(context)!.availableLabel,
                   value: '${stats['unassigned'] ?? 0}',
                   color: AppColors.orange,
                   icon: Icons.person_search,
@@ -569,7 +576,7 @@ class _StaffMemberCard extends StatelessWidget {
                     : null,
               ),
               child: Text(
-                isAssigned ? 'Reassign' : 'Assign',
+                isAssigned ? AppLocalizations.of(context)!.reassignButton : AppLocalizations.of(context)!.assignButton,
                 style: GoogleFonts.roboto(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
@@ -603,12 +610,12 @@ class _AssignmentsTab extends StatelessWidget {
                 size: 64, color: Colors.white24),
             const SizedBox(height: 16),
             Text(
-              'No active assignments',
+              AppLocalizations.of(context)!.noActiveAssignments,
               style: GoogleFonts.roboto(fontSize: 16, color: Colors.white54),
             ),
             const SizedBox(height: 8),
             Text(
-              'Assign staff to zones from the All Staff tab',
+              AppLocalizations.of(context)!.assignStaffToZones,
               style: GoogleFonts.roboto(fontSize: 13, color: Colors.white38),
             ),
           ],
@@ -632,8 +639,8 @@ class _AssignmentsTab extends StatelessWidget {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text(success
-                        ? 'Assignment removed'
-                        : 'Failed to remove assignment'),
+                        ? AppLocalizations.of(context)!.assignmentRemoved
+                        : AppLocalizations.of(context)!.failedToRemoveAssignment),
                     backgroundColor:
                         success ? AppColors.green : AppColors.red,
                   ),
@@ -767,7 +774,28 @@ class _ZoneCoverageTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final zones = Provider.of<CrowdProvider>(context, listen: false).allZones;
+    final zones = Provider.of<CrowdProvider>(context).allZones;
+
+    if (zones.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.map_outlined, size: 64, color: Colors.white24),
+            const SizedBox(height: 16),
+            Text(
+              AppLocalizations.of(context)!.noZonesFound,
+              style: GoogleFonts.roboto(fontSize: 16, color: Colors.white54),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              AppLocalizations.of(context)!.zonesWillAppearOnceEventDataLoaded,
+              style: GoogleFonts.roboto(fontSize: 13, color: Colors.white38),
+            ),
+          ],
+        ),
+      );
+    }
 
     return ListView.builder(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),

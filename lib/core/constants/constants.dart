@@ -2,7 +2,7 @@ import '../config/environment.dart';
 
 class AppConstants {
   // App Info
-  static const String appName = 'Mundial Manager';
+  static const String appName = 'Mundial';
   static const String appVersion = '1.0.0';
   static const String appTagline = 'Crowd Management for FIFA World Cup 2026';
 
@@ -21,6 +21,19 @@ class AppConstants {
   static const String keyLoginAttempts = 'login_attempts';
   static const String keyLockoutUntil = 'lockout_until';
   static const String keyEmailVerified = 'email_verified';
+  static const String keyRememberMe = 'remember_me';
+  static const String keyRememberedEmail = 'remembered_email';
+
+  // Settings Keys
+  static const String keyDarkMode = 'settings_dark_mode';
+  static const String keyTextSize = 'settings_text_size';
+  static const String keyPushNotifications = 'settings_push_notifications';
+  static const String keySoundEnabled = 'settings_sound_enabled';
+  static const String keyCrowdAlerts = 'settings_crowd_alerts';
+  static const String keyEmergencyAlerts = 'settings_emergency_alerts';
+  static const String keyLanguage = 'settings_language';
+  static const String keyLocationSharing = 'settings_location_sharing';
+  static const String keyAnalyticsEnabled = 'settings_analytics_enabled';
 
   // User Roles
   static const String roleFan = 'fan';
@@ -36,15 +49,25 @@ class AppConstants {
   static const double densityHighMax = 4.5;
   static const double densityCriticalMin = 4.6;
 
-  // Alert Thresholds
+  // Alert Thresholds (people per m²)
   static const double alertThresholdRed = 3.0;
   static const double alertThresholdCritical = 4.5;
 
+  // Occupancy % Thresholds (derived from Kaggle Hajj & Umrah Dataset)
+  // These drive automatic color changes and alert triggers.
+  static const double occupancyModerate = 50.0;   // Yellow - monitoring
+  static const double occupancyHigh = 70.0;        // Orange - congestion warning
+  static const double occupancyCritical = 85.0;    // Red - safety alert
+  static const double occupancyEmergency = 95.0;   // Dark Red - emergency alert
+
+  // Auto-alert cooldown to prevent spam
+  static const Duration autoAlertCooldown = Duration(minutes: 5);
+
   // Map Settings
-  static const double defaultLat = 24.7257;
-  static const double defaultLng = 46.8222;
-  static const double defaultZoom = 16.0;
-  static const double minZoom = 14.0;
+  static const double defaultLat = 24.7133;
+  static const double defaultLng = 46.8253;
+  static const double defaultZoom = 17.5;
+  static const double minZoom = 15.0;
   static const double maxZoom = 19.0;
 
   // Real-time Update Intervals

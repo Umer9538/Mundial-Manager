@@ -22,7 +22,7 @@ class StorageService {
       uploadTask.snapshotEvents.listen((event) {
         final progress = event.bytesTransferred / event.totalBytes;
         if (kDebugMode) {
-          print('Upload progress: ${(progress * 100).toStringAsFixed(1)}%');
+          debugPrint('Upload progress: ${(progress * 100).toStringAsFixed(1)}%');
         }
       });
 
@@ -32,7 +32,7 @@ class StorageService {
       return downloadUrl;
     } catch (e) {
       if (kDebugMode) {
-        print('Error uploading profile image: $e');
+        debugPrint('Error uploading profile image: $e');
       }
       return null;
     }
@@ -61,7 +61,7 @@ class StorageService {
       return downloadUrl;
     } catch (e) {
       if (kDebugMode) {
-        print('Error uploading incident image: $e');
+        debugPrint('Error uploading incident image: $e');
       }
       return null;
     }
@@ -108,7 +108,7 @@ class StorageService {
       return downloadUrl;
     } catch (e) {
       if (kDebugMode) {
-        print('Error uploading venue image: $e');
+        debugPrint('Error uploading venue image: $e');
       }
       return null;
     }
@@ -134,7 +134,7 @@ class StorageService {
       return downloadUrl;
     } catch (e) {
       if (kDebugMode) {
-        print('Error uploading zone map: $e');
+        debugPrint('Error uploading zone map: $e');
       }
       return null;
     }
@@ -148,7 +148,7 @@ class StorageService {
       return true;
     } catch (e) {
       if (kDebugMode) {
-        print('Error deleting file: $e');
+        debugPrint('Error deleting file: $e');
       }
       return false;
     }
@@ -165,7 +165,7 @@ class StorageService {
       }
     } catch (e) {
       if (kDebugMode) {
-        print('Error deleting incident images: $e');
+        debugPrint('Error deleting incident images: $e');
       }
     }
   }
@@ -177,7 +177,7 @@ class StorageService {
       return await ref.getDownloadURL();
     } catch (e) {
       if (kDebugMode) {
-        print('Error getting download URL: $e');
+        debugPrint('Error getting download URL: $e');
       }
       return null;
     }

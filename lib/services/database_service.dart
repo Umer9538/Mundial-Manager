@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:latlong2/latlong.dart';
 import '../models/event.dart';
 import '../models/venue.dart';
@@ -42,6 +43,7 @@ class DatabaseService {
 
   // Get current active event (most recent active event)
   Future<Event?> getCurrentActiveEvent() async {
+    // Try with composite index (status + startDate)
     try {
       final snapshot = await _firestore
           .collection('events')
@@ -54,8 +56,38 @@ class DatabaseService {
         return _eventFromDoc(snapshot.docs.first);
       }
     } catch (e) {
-      // Firestore index may not exist yet, ignore
+      debugPrint('Active event query with index failed: $e');
     }
+
+    // Fallback: query without orderBy (works without composite index)
+    try {
+      final snapshot = await _firestore
+          .collection('events')
+          .where('status', isEqualTo: 'active')
+          .limit(1)
+          .get();
+
+      if (snapshot.docs.isNotEmpty) {
+        return _eventFromDoc(snapshot.docs.first);
+      }
+    } catch (e) {
+      debugPrint('Active event fallback query failed: $e');
+    }
+
+    // Last resort: get any event
+    try {
+      final snapshot = await _firestore
+          .collection('events')
+          .limit(1)
+          .get();
+
+      if (snapshot.docs.isNotEmpty) {
+        return _eventFromDoc(snapshot.docs.first);
+      }
+    } catch (e) {
+      debugPrint('Any event query failed: $e');
+    }
+
     return null;
   }
 
@@ -334,6 +366,7 @@ class DatabaseService {
   Future<String> createAlert(Alert alert) async {
     final docRef = await _firestore.collection('alerts').add({
       ...alert.toJson(),
+      'isActive': true,
       'createdAt': FieldValue.serverTimestamp(),
     });
     return docRef.id;
@@ -344,6 +377,14 @@ class DatabaseService {
     await _firestore.collection('alerts').doc(alertId).update({
       'isActive': false,
       'dismissedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  // Resolve alert
+  Future<void> resolveAlert(String alertId) async {
+    await _firestore.collection('alerts').doc(alertId).update({
+      'severity': 'resolved',
+      'resolvedAt': FieldValue.serverTimestamp(),
     });
   }
 

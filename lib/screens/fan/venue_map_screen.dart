@@ -1,26 +1,25 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../core/theme/app_colors.dart';
-import '../../models/event.dart';
-import '../../services/database_service.dart';
+import '../../l10n/app_localizations.dart';
 import '../../providers/crowd_provider.dart';
 import '../../providers/alert_provider.dart';
-import '../../providers/auth_provider.dart';
 import '../../widgets/map/crowd_heatmap.dart';
+import '../common/report_incident_screen.dart';
 
 class VenueMapScreen extends StatefulWidget {
-  const VenueMapScreen({super.key});
+  final VoidCallback? onNavigateHome;
+
+  const VenueMapScreen({super.key, this.onNavigateHome});
 
   @override
   State<VenueMapScreen> createState() => _VenueMapScreenState();
 }
 
 class _VenueMapScreenState extends State<VenueMapScreen> {
-  bool _showAlert = true;
-  Event? _currentEvent;
-  String? _venueName;
-  int? _venueCapacity;
+  String? _selectedZoneFilter; // null = All
 
   @override
   void initState() {
@@ -29,310 +28,272 @@ class _VenueMapScreenState extends State<VenueMapScreen> {
   }
 
   Future<void> _loadEventData() async {
-    final dbService = DatabaseService();
-    final event = await dbService.getCurrentActiveEvent();
-    if (!mounted) return;
-    setState(() {
-      _currentEvent = event;
-    });
-    if (event != null) {
-      final venueDoc = await dbService.getVenueById(event.venueId);
-      if (mounted && venueDoc != null) {
-        setState(() {
-          _venueName = venueDoc.name;
-          _venueCapacity = venueDoc.capacity;
-        });
-      }
-    }
+    // Event data is loaded by CrowdProvider; this is kept for future use
   }
 
   @override
   Widget build(BuildContext context) {
-    return Consumer2<CrowdProvider, AuthProvider>(
-      builder: (context, crowdProvider, authProvider, _) {
-        return Stack(
-          children: [
-            // Full Map
-            CrowdHeatmap(
-              crowdData: crowdProvider.crowdData,
-              zones: crowdProvider.allZones,
-              onZoneTap: (zone) {
-                _showZoneDetails(context, zone.id, crowdProvider);
-              },
-            ),
+    final l = AppLocalizations.of(context)!;
 
-            // Top Bar
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              child: SafeArea(
+    return Consumer2<CrowdProvider, AlertProvider>(
+      builder: (context, crowdProvider, alertProvider, _) {
+        final stats = crowdProvider.venueStats;
+        final avgOccupancy = stats['occupancyPercentage'] as int? ?? 0;
+        final criticalCount = stats['criticalZones'] as int? ?? 0;
+        final criticalAlerts = alertProvider.criticalAlerts.length;
+
+        return Container(
+          color: const Color(0xFF0D1B2A),
+          child: Column(
+            children: [
+              // Top bar
+              SafeArea(
                 bottom: false,
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                   child: Row(
                     children: [
                       IconButton(
-                        icon: const Icon(Icons.menu, color: Colors.white),
-                        onPressed: () {},
+                        icon: const Icon(Icons.arrow_back, color: Colors.white, size: 22),
+                        onPressed: () => Navigator.pop(context),
                       ),
                       const Spacer(),
                       Text(
-                        'Event Map',
+                        l.liveCrowdMonitoring,
                         style: GoogleFonts.montserrat(
-                          fontSize: 18,
+                          fontSize: 16,
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
                         ),
                       ),
                       const Spacer(),
-                      Stack(
-                        clipBehavior: Clip.none,
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.notifications_outlined, color: Colors.white),
-                            onPressed: () {},
-                          ),
-                          Positioned(
-                            right: 10,
-                            top: 10,
-                            child: Container(
-                              width: 8,
-                              height: 8,
-                              decoration: const BoxDecoration(
-                                color: AppColors.red,
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                          ),
-                        ],
+                      IconButton(
+                        icon: const Icon(Icons.refresh, color: Colors.white70, size: 22),
+                        onPressed: () => crowdProvider.refresh(),
                       ),
                     ],
                   ),
                 ),
               ),
-            ),
 
-            // Alert Banner - shows most recent fan alert
-            if (_showAlert)
-              Consumer<AlertProvider>(
-                builder: (context, alertProvider, _) {
-                  final fanAlerts = alertProvider.getAlertsForRole('fan');
-                  if (fanAlerts.isEmpty) return const SizedBox.shrink();
-                  final latestAlert = fanAlerts.first;
-                  return Positioned(
-                    top: MediaQuery.of(context).padding.top + 56,
-                    left: 16,
-                    right: 16,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFCC5A50),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Row(
+              // Heatmap area
+              Expanded(
+                flex: 5,
+                child: ClipRRect(
+                  borderRadius: const BorderRadius.vertical(bottom: Radius.circular(20)),
+                  child: CrowdHeatmap(
+                    crowdData: crowdProvider.crowdData,
+                    zones: crowdProvider.allZones,
+                    onZoneTap: (zone) {
+                      if (widget.onNavigateHome != null) {
+                        widget.onNavigateHome!();
+                      } else {
+                        _showZoneDetails(context, zone.id, crowdProvider);
+                      }
+                    },
+                  ),
+                ),
+              ),
+
+              // Stats panel
+              Expanded(
+                flex: 3,
+                child: Container(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+                  child: Column(
+                    children: [
+                      // Density info + zone filter
+                      Row(
                         children: [
-                          const Icon(Icons.warning_amber, color: Colors.white, size: 24),
-                          const SizedBox(width: 12),
+                          // Circular density gauge
+                          SizedBox(
+                            width: 70,
+                            height: 70,
+                            child: CustomPaint(
+                              painter: _GaugePainter(
+                                percentage: avgOccupancy.toDouble(),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  '$avgOccupancy%',
+                                  style: GoogleFonts.montserrat(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 14),
+                          // Info text
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  latestAlert.typeDisplayName,
+                                  l.densityLabel,
                                   style: GoogleFonts.montserrat(
-                                    fontSize: 14,
+                                    fontSize: 15,
                                     fontWeight: FontWeight.bold,
                                     color: Colors.white,
                                   ),
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
-                                  latestAlert.message,
+                                  '${l.densityLabel}: $avgOccupancy%',
                                   style: GoogleFonts.roboto(
                                     fontSize: 12,
-                                    color: Colors.white70,
+                                    color: Colors.white60,
                                   ),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  '${l.activeAlerts}: ${criticalAlerts + criticalCount}',
+                                  style: GoogleFonts.roboto(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.red,
+                                  ),
                                 ),
                               ],
                             ),
                           ),
-                          GestureDetector(
-                            onTap: () => setState(() => _showAlert = false),
-                            child: const Icon(Icons.close, color: Colors.white70, size: 20),
+                          // Zone filter buttons
+                          Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              ..._buildZoneFilterButtons(crowdProvider),
+                              _zoneFilterButton(l.allFilter, null),
+                            ],
                           ),
                         ],
                       ),
-                    ),
-                  );
-                },
-              ),
 
-            // POI Markers overlay
-            Positioned(
-              top: MediaQuery.of(context).padding.top + (_showAlert ? 150 : 70),
-              right: 24,
-              child: _PoiMarker(icon: Icons.local_hospital, label: 'First Aid'),
-            ),
-            Positioned(
-              top: MediaQuery.of(context).size.height * 0.3,
-              left: 40,
-              child: _PoiMarker(icon: Icons.restaurant, label: 'Food'),
-            ),
-            Positioned(
-              top: MediaQuery.of(context).size.height * 0.45,
-              left: MediaQuery.of(context).size.width * 0.4,
-              child: _PoiMarker(icon: Icons.door_front_door_outlined, label: 'Entrance'),
-            ),
-            Positioned(
-              bottom: MediaQuery.of(context).size.height * 0.25,
-              left: 50,
-              child: _PoiMarker(icon: Icons.mosque, label: 'Prayer'),
-            ),
-            Positioned(
-              bottom: MediaQuery.of(context).size.height * 0.15,
-              left: MediaQuery.of(context).size.width * 0.4,
-              child: _PoiMarker(icon: Icons.exit_to_app, label: 'Exit'),
-            ),
+                      const SizedBox(height: 14),
 
-            // Bottom Action Buttons
-            Positioned(
-              bottom: 16,
-              left: 16,
-              right: 16,
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Consumer<AuthProvider>(
-                      builder: (context, auth, _) {
-                        return SizedBox(
-                          height: 52,
-                          child: ElevatedButton.icon(
-                            onPressed: () => auth.toggleLocationSharing(),
-                            icon: Icon(
-                              Icons.my_location,
-                              size: 18,
-                              color: auth.isLocationSharing ? Colors.white : Colors.white70,
+                      // Action buttons
+                      SizedBox(
+                        width: double.infinity,
+                        height: 46,
+                        child: ElevatedButton(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const ReportIncidentScreen()),
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.red,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
                             ),
-                            label: Text(
-                              'Share\nLocation',
-                              textAlign: TextAlign.center,
-                              style: GoogleFonts.roboto(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                height: 1.2,
-                              ),
-                            ),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: auth.isLocationSharing
-                                  ? AppColors.softTealBlue
-                                  : AppColors.coolSteelBlue,
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              elevation: 0,
+                            elevation: 0,
+                          ),
+                          child: Text(
+                            l.reportIssue,
+                            style: GoogleFonts.montserrat(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
-                        );
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: SizedBox(
-                      height: 52,
-                      child: ElevatedButton.icon(
-                        onPressed: () => _showEventInfo(context),
-                        icon: const Icon(Icons.info_outline, size: 18),
-                        label: Text(
-                          'Event Info',
-                          style: GoogleFonts.roboto(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.coolSteelBlue,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          elevation: 0,
                         ),
                       ),
-                    ),
+                      const SizedBox(height: 8),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 46,
+                        child: OutlinedButton(
+                          onPressed: () {
+                            // Navigate to alerts tab (index 2 in fan dashboard)
+                            Navigator.pop(context);
+                          },
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.white,
+                            side: const BorderSide(color: Colors.white38, width: 1.5),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: Text(
+                            l.viewAlerts,
+                            style: GoogleFonts.montserrat(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         );
       },
     );
   }
 
-  void _showEventInfo(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: AppColors.coolSteelBlue,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.white24,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
+  List<Widget> _buildZoneFilterButtons(CrowdProvider provider) {
+    final zones = provider.allZones;
+    // Show first 3 zone codes as filter buttons
+    return zones.take(3).map((zone) {
+      final code = zone.name.split(' ').map((w) => w[0]).join();
+      return _zoneFilterButton(code, zone.id);
+    }).toList();
+  }
+
+  Widget _zoneFilterButton(String label, String? zoneId) {
+    final isSelected = _selectedZoneFilter == zoneId;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: GestureDetector(
+        onTap: () => setState(() => _selectedZoneFilter = zoneId),
+        child: Container(
+          width: 36,
+          height: 28,
+          decoration: BoxDecoration(
+            color: isSelected
+                ? AppColors.softTealBlue.withValues(alpha: 0.4)
+                : Colors.white.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(8),
+            border: isSelected
+                ? Border.all(color: AppColors.softTealBlue, width: 1.5)
+                : null,
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            label,
+            style: GoogleFonts.roboto(
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+              color: isSelected ? Colors.white : Colors.white60,
             ),
-            const SizedBox(height: 20),
-            Text(
-              _venueName ?? 'Venue',
-              style: GoogleFonts.montserrat(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
-            const SizedBox(height: 12),
-            _InfoRow(label: 'Event', value: _currentEvent?.name ?? 'No active event'),
-            if (_venueCapacity != null)
-              _InfoRow(label: 'Capacity', value: '$_venueCapacity'),
-            _InfoRow(label: 'Status', value: _currentEvent != null ? 'LIVE' : 'INACTIVE'),
-            const SizedBox(height: 16),
-          ],
+          ),
         ),
       ),
     );
   }
 
   void _showZoneDetails(BuildContext context, String zoneId, CrowdProvider crowdProvider) {
+    final l = AppLocalizations.of(context)!;
     final zone = crowdProvider.getZone(zoneId);
     final density = crowdProvider.getZoneDensity(zoneId);
 
     if (zone == null || density == null) return;
+
+    final color = AppColors.getDensityColorByOccupancy(density.occupancyPercentage);
 
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
         padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: AppColors.coolSteelBlue,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        decoration: const BoxDecoration(
+          color: Color(0xFF152238),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -340,74 +301,54 @@ class _VenueMapScreenState extends State<VenueMapScreen> {
           children: [
             Center(
               child: Container(
-                width: 40,
-                height: 4,
+                width: 40, height: 4,
                 decoration: BoxDecoration(
                   color: Colors.white24,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
             ),
-            const SizedBox(height: 20),
-            Text(
-              zone.name,
-              style: GoogleFonts.montserrat(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Container(
+                  width: 12, height: 12,
+                  decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  zone.name,
+                  style: GoogleFonts.montserrat(
+                    fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white,
+                  ),
+                ),
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: color, width: 1),
+                  ),
+                  child: Text(
+                    density.statusDisplayName.toUpperCase(),
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: color),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 16),
-            _InfoRow(
-              label: 'Population',
-              value: '${density.currentPopulation}/${density.capacity}',
-            ),
-            _InfoRow(
-              label: 'Occupancy',
-              value: '${density.occupancyPercentageRounded}%',
-            ),
-            _InfoRow(
-              label: 'Density',
-              value: '${density.densityPerSqMeter.toStringAsFixed(1)} p/m²',
-            ),
-            const SizedBox(height: 16),
+            _InfoRow(label: l.populationLabel, value: '${density.currentPopulation} / ${density.capacity}'),
+            _InfoRow(label: l.occupancyLabel, value: '${density.occupancyPercentageRounded}%', valueColor: color),
+            _InfoRow(label: l.densityLabel, value: '${density.densityPerSqMeter.toStringAsFixed(1)} p/m\u00B2'),
+            if (density.temperature != null)
+              _InfoRow(label: l.temperatureLabel, value: '${density.temperature!.toStringAsFixed(0)}\u00B0C'),
+            if (density.weatherCondition != null)
+              _InfoRow(label: l.weatherLabel, value: density.weatherCondition!),
+            const SizedBox(height: 8),
           ],
         ),
       ),
-    );
-  }
-}
-
-class _PoiMarker extends StatelessWidget {
-  final IconData icon;
-  final String label;
-
-  const _PoiMarker({required this.icon, required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: AppColors.coolSteelBlue.withValues(alpha: 0.9),
-            shape: BoxShape.circle,
-            border: Border.all(color: Colors.white24, width: 1),
-          ),
-          child: Icon(icon, color: Colors.white, size: 20),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: GoogleFonts.roboto(
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
-            color: Colors.white,
-          ),
-        ),
-      ],
     );
   }
 }
@@ -415,8 +356,9 @@ class _PoiMarker extends StatelessWidget {
 class _InfoRow extends StatelessWidget {
   final String label;
   final String value;
+  final Color? valueColor;
 
-  const _InfoRow({required this.label, required this.value});
+  const _InfoRow({required this.label, required this.value, this.valueColor});
 
   @override
   Widget build(BuildContext context) {
@@ -425,17 +367,14 @@ class _InfoRow extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            label,
-            style: GoogleFonts.roboto(fontSize: 14, color: Colors.white60),
-          ),
+          Text(label, style: GoogleFonts.roboto(fontSize: 13, color: Colors.white54)),
           Flexible(
             child: Text(
               value,
               style: GoogleFonts.roboto(
-                fontSize: 14,
+                fontSize: 13,
                 fontWeight: FontWeight.w600,
-                color: Colors.white,
+                color: valueColor ?? Colors.white,
               ),
               textAlign: TextAlign.end,
             ),
@@ -444,4 +383,57 @@ class _InfoRow extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Circular gauge painter for the density percentage.
+class _GaugePainter extends CustomPainter {
+  final double percentage;
+
+  _GaugePainter({required this.percentage});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width / 2 - 4;
+    const startAngle = -pi / 2;
+    final sweepAngle = 2 * pi * (percentage / 100).clamp(0.0, 1.0);
+
+    // Background arc
+    final bgPaint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.1)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 6
+      ..strokeCap = StrokeCap.round;
+    canvas.drawCircle(center, radius, bgPaint);
+
+    // Progress arc
+    final Color progressColor;
+    if (percentage >= 85) {
+      progressColor = AppColors.red;
+    } else if (percentage >= 70) {
+      progressColor = AppColors.orange;
+    } else if (percentage >= 50) {
+      progressColor = AppColors.yellow;
+    } else {
+      progressColor = AppColors.softTealBlue;
+    }
+
+    final progressPaint = Paint()
+      ..color = progressColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 6
+      ..strokeCap = StrokeCap.round;
+
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius),
+      startAngle,
+      sweepAngle,
+      false,
+      progressPaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _GaugePainter oldDelegate) =>
+      oldDelegate.percentage != percentage;
 }

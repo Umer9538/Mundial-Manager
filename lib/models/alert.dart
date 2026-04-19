@@ -28,19 +28,29 @@ class Alert {
   factory Alert.fromJson(Map<String, dynamic> json) {
     return Alert(
       id: json['id'] as String,
-      eventId: json['eventId'] as String,
-      createdBy: json['createdBy'] as String,
-      createdByName: json['createdByName'] as String,
+      eventId: json['eventId'] as String? ?? '',
+      createdBy: json['createdBy'] as String? ?? 'system',
+      createdByName: json['createdByName'] as String? ?? 'System',
       type: json['type'] as String,
       message: json['message'] as String,
       targetRoles: (json['targetRoles'] as List).cast<String>(),
       targetZones: (json['targetZones'] as List?)?.cast<String>(),
       severity: json['severity'] as String,
-      createdAt: DateTime.parse(json['createdAt'] as String),
-      expiresAt: json['expiresAt'] != null
-          ? DateTime.parse(json['expiresAt'] as String)
-          : null,
+      createdAt: _parseDateTime(json['createdAt']),
+      expiresAt: json['expiresAt'] != null ? _parseDateTime(json['expiresAt']) : null,
     );
+  }
+
+  /// Safely parse DateTime from Firestore Timestamp or ISO String.
+  static DateTime _parseDateTime(dynamic value) {
+    if (value == null) return DateTime.now();
+    if (value is String) return DateTime.tryParse(value) ?? DateTime.now();
+    // Firestore Timestamp has a toDate() method
+    try {
+      return (value as dynamic).toDate();
+    } catch (_) {
+      return DateTime.now();
+    }
   }
 
   Map<String, dynamic> toJson() {

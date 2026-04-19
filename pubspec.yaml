@@ -30,6 +30,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
 
   # UI & Icons
   cupertino_icons: ^1.0.8
@@ -48,7 +50,7 @@ dependencies:
   go_router: ^13.0.0
 
   # Utilities
-  intl: ^0.19.0
+  intl: ^0.20.2
   shared_preferences: ^2.2.2
   uuid: ^4.3.0
   image_picker: ^1.0.7
@@ -80,6 +82,7 @@ dev_dependencies:
 
 # The following section is specific to Flutter packages.
 flutter:
+  generate: true
 
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in
@@ -88,6 +91,7 @@ flutter:
 
   assets:
     - assets/logo.png
+    - assets/data/hajj_umrah_crowd_management_dataset.csv
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

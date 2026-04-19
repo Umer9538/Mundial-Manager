@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../../core/theme/app_colors.dart';
+import '../../l10n/app_localizations.dart';
 import '../../models/event.dart';
 import '../../services/database_service.dart';
 import '../../providers/crowd_provider.dart';
@@ -31,11 +32,18 @@ class _FanDashboardState extends State<FanDashboard> {
   int _selectedIndex = 0;
   Event? _currentEvent;
   String? _eventVenueAddress;
+  CrowdProvider? _crowdProvider;
 
   @override
   void initState() {
     super.initState();
     _initializeData();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _crowdProvider = Provider.of<CrowdProvider>(context, listen: false);
   }
 
   Future<void> _initializeData() async {
@@ -52,6 +60,8 @@ class _FanDashboardState extends State<FanDashboard> {
       alertProvider.initialize(eventId: eventId),
     ]);
 
+    // Connect auto-alert system (dataset-driven density alerts)
+    crowdProvider.connectAlertProvider(alertProvider);
     crowdProvider.startRealTimeUpdates(eventId: eventId);
   }
 
@@ -80,7 +90,7 @@ class _FanDashboardState extends State<FanDashboard> {
 
   @override
   void dispose() {
-    Provider.of<CrowdProvider>(context, listen: false).stopRealTimeUpdates();
+    _crowdProvider?.stopRealTimeUpdates();
     super.dispose();
   }
 
@@ -92,6 +102,8 @@ class _FanDashboardState extends State<FanDashboard> {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,
       child: Scaffold(
@@ -105,17 +117,17 @@ class _FanDashboardState extends State<FanDashboard> {
               currentEvent: _currentEvent,
               venueAddress: _eventVenueAddress,
             ),
-            const VenueMapScreen(),
+            VenueMapScreen(onNavigateHome: () => _onItemTapped(0)),
             const NotificationsScreen(),
             const FanProfileScreen(),
           ],
         ),
-        bottomNavigationBar: _buildBottomNav(),
+        bottomNavigationBar: _buildBottomNav(l),
       ),
     );
   }
 
-  Widget _buildBottomNav() {
+  Widget _buildBottomNav(AppLocalizations l) {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.deepNavyBlue,
@@ -136,21 +148,21 @@ class _FanDashboardState extends State<FanDashboard> {
               _NavItem(
                 icon: Icons.home_outlined,
                 activeIcon: Icons.home,
-                label: 'Home',
+                label: l.homeTab,
                 isSelected: _selectedIndex == 0,
                 onTap: () => _onItemTapped(0),
               ),
               _NavItem(
                 icon: Icons.map_outlined,
                 activeIcon: Icons.map,
-                label: 'Map',
+                label: l.mapTab,
                 isSelected: _selectedIndex == 1,
                 onTap: () => _onItemTapped(1),
               ),
               _NavItem(
                 icon: Icons.notifications_outlined,
                 activeIcon: Icons.notifications,
-                label: 'Alerts',
+                label: l.alertsTab,
                 isSelected: _selectedIndex == 2,
                 onTap: () => _onItemTapped(2),
                 badge: Consumer<AlertProvider>(
@@ -164,7 +176,7 @@ class _FanDashboardState extends State<FanDashboard> {
               _NavItem(
                 icon: Icons.person_outline,
                 activeIcon: Icons.person,
-                label: 'Profile',
+                label: l.profileTab,
                 isSelected: _selectedIndex == 3,
                 onTap: () => _onItemTapped(3),
               ),
@@ -278,6 +290,8 @@ class _HomeTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+
     return GradientScaffold(
       body: Consumer2<CrowdProvider, AlertProvider>(
         builder: (context, crowdProvider, alertProvider, _) {
@@ -310,50 +324,38 @@ class _HomeTab extends StatelessWidget {
                     const SizedBox(height: 16),
 
                     // Welcome Header
-                    Row(
-                      children: [
-                        Text(
-                          'Welcome, ',
-                          style: GoogleFonts.poppins(
-                            fontSize: 26,
-                            fontWeight: FontWeight.w400,
-                            color: Colors.white70,
-                          ),
-                        ),
-                        Text(
-                          userName.split(' ').first,
-                          style: GoogleFonts.poppins(
-                            fontSize: 26,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.softTealBlue,
-                          ),
-                        ),
-                      ],
+                    Text(
+                      l.welcomeUser(userName.split(' ').first),
+                      style: GoogleFonts.poppins(
+                        fontSize: 26,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.softTealBlue,
+                      ),
                     ),
                     const SizedBox(height: 16),
 
                     // Current Event Card with Mundial Manager header
-                    _buildEventCard(context, alertProvider, currentEvent, venueAddress),
+                    _buildEventCard(context, l, alertProvider, currentEvent, venueAddress),
                     const SizedBox(height: 24),
 
                     // Action Buttons
-                    _buildActionButtons(context),
+                    _buildActionButtons(context, l),
                     const SizedBox(height: 32),
 
                     // Active Alerts Section
                     if (alerts.isNotEmpty) ...[
-                      _buildSectionHeader(context, 'Active Alerts', alerts.length),
+                      _buildSectionHeader(context, l.activeAlerts, alerts.length),
                       const SizedBox(height: 12),
                       ...alerts.take(3).map((alert) => Padding(
                         padding: const EdgeInsets.only(bottom: 12),
-                        child: _buildAlertCard(context, alert),
+                        child: _buildAlertCard(context, l, alert),
                       )),
                       if (alerts.length > 3)
                         Center(
                           child: TextButton(
                             onPressed: () => onNavigate(2),
                             child: Text(
-                              'View All Alerts',
+                              l.viewAllAlerts,
                               style: GoogleFonts.roboto(
                                 color: AppColors.softTealBlue,
                                 fontWeight: FontWeight.w600,
@@ -372,7 +374,7 @@ class _HomeTab extends StatelessWidget {
     );
   }
 
-  Widget _buildEventCard(BuildContext context, AlertProvider alertProvider, Event? event, String? venueAddress) {
+  Widget _buildEventCard(BuildContext context, AppLocalizations l, AlertProvider alertProvider, Event? event, String? venueAddress) {
     final unreadCount = alertProvider.getAlertsForRole('fan').length;
 
     return GlassCard(
@@ -390,7 +392,7 @@ class _HomeTab extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               Text(
-                'Mundial Manager',
+                l.appName,
                 style: GoogleFonts.montserrat(
                   fontSize: 17,
                   fontWeight: FontWeight.bold,
@@ -443,7 +445,7 @@ class _HomeTab extends StatelessWidget {
           if (event != null) ...[
             // Current Event label
             Text(
-              'Current Event:',
+              l.currentEventLabel,
               style: GoogleFonts.roboto(
                 fontSize: 13,
                 color: Colors.white60,
@@ -494,11 +496,14 @@ class _HomeTab extends StatelessWidget {
                     color: Colors.white54,
                   ),
                   const SizedBox(width: 4),
-                  Text(
-                    venueAddress,
-                    style: GoogleFonts.roboto(
-                      fontSize: 13,
-                      color: Colors.white54,
+                  Expanded(
+                    child: Text(
+                      venueAddress,
+                      style: GoogleFonts.roboto(
+                        fontSize: 13,
+                        color: Colors.white54,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ],
@@ -517,7 +522,7 @@ class _HomeTab extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'No active event',
+                      l.noActiveEvent,
                       style: GoogleFonts.roboto(
                         fontSize: 15,
                         color: Colors.white54,
@@ -541,23 +546,23 @@ class _HomeTab extends StatelessWidget {
     return '${dateFormat.format(start)} - ${dateFormat.format(end)}';
   }
 
-  Widget _buildActionButtons(BuildContext context) {
+  Widget _buildActionButtons(BuildContext context, AppLocalizations l) {
     return Column(
       children: [
         CustomButton.primary(
-          text: 'View Map',
+          text: l.viewMap,
           icon: Icons.map_outlined,
           onPressed: () => onNavigate(1),
         ),
         const SizedBox(height: 12),
         CustomButton.secondary(
-          text: 'View Alerts',
+          text: l.viewAlerts,
           icon: Icons.notifications_outlined,
           onPressed: () => onNavigate(2),
         ),
         const SizedBox(height: 12),
         CustomButton.warning(
-          text: 'Report Incident',
+          text: l.reportIncident,
           icon: Icons.warning_amber,
           onPressed: () {
             Navigator.push(
@@ -573,17 +578,7 @@ class _HomeTab extends StatelessWidget {
           builder: (context, authProvider, _) {
             final isSharing = authProvider.currentUser?.locationSharingEnabled ?? false;
             return GestureDetector(
-              onTap: () async {
-                await authProvider.toggleLocationSharing();
-                if (context.mounted && authProvider.errorMessage != null) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(authProvider.errorMessage!),
-                      backgroundColor: AppColors.red,
-                    ),
-                  );
-                }
-              },
+              onTap: () => _showLocationSharingDialog(context, l, authProvider, isSharing),
               child: Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(vertical: 14),
@@ -607,7 +602,7 @@ class _HomeTab extends StatelessWidget {
                     ),
                     const SizedBox(width: 10),
                     Text(
-                      isSharing ? 'Location Sharing: ON' : 'Share My Location',
+                      isSharing ? l.locationSharingOn : l.shareMyLocation,
                       style: GoogleFonts.roboto(
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
@@ -621,6 +616,113 @@ class _HomeTab extends StatelessWidget {
           },
         ),
       ],
+    );
+  }
+
+  void _showLocationSharingDialog(
+    BuildContext context,
+    AppLocalizations l,
+    AuthProvider authProvider,
+    bool isCurrentlySharing,
+  ) {
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: const Color(0xFF1A2A3A),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 64,
+                height: 64,
+                decoration: BoxDecoration(
+                  color: (isCurrentlySharing ? AppColors.red : AppColors.green)
+                      .withOpacity(0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  isCurrentlySharing ? Icons.location_off : Icons.location_on,
+                  color: isCurrentlySharing ? AppColors.red : AppColors.green,
+                  size: 32,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                l.locationSharing,
+                style: GoogleFonts.montserrat(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                isCurrentlySharing
+                    ? l.locationSharingSubtitle
+                    : l.locationSharingSubtitle,
+                style: GoogleFonts.roboto(
+                  fontSize: 14,
+                  color: Colors.white60,
+                  height: 1.5,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.white70,
+                        side: const BorderSide(color: Colors.white24),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: Text(l.cancelButton),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        Navigator.pop(ctx);
+                        await authProvider.toggleLocationSharing();
+                        if (context.mounted && authProvider.errorMessage != null) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(authProvider.errorMessage!),
+                              backgroundColor: AppColors.red,
+                            ),
+                          );
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor:
+                            isCurrentlySharing ? AppColors.red : AppColors.green,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: Text(
+                        isCurrentlySharing ? l.locationSharingOn : l.shareMyLocation,
+                        style: GoogleFonts.roboto(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -655,13 +757,11 @@ class _HomeTab extends StatelessWidget {
     );
   }
 
-  Widget _buildAlertCard(BuildContext context, dynamic alert) {
+  Widget _buildAlertCard(BuildContext context, AppLocalizations l, dynamic alert) {
     return GlassCardWithIndicator(
       indicatorColor: _getAlertColor(alert.type),
       padding: const EdgeInsets.all(16),
-      onTap: () {
-        // TODO: Show alert details
-      },
+      onTap: () => onNavigate(2),
       child: Row(
         children: [
           Expanded(
@@ -697,7 +797,7 @@ class _HomeTab extends StatelessWidget {
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
-              'View on Map',
+              l.viewOnMap,
               style: GoogleFonts.roboto(
                 fontSize: 11,
                 fontWeight: FontWeight.w600,

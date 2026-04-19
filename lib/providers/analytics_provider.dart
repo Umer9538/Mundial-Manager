@@ -110,8 +110,6 @@ class AnalyticsProvider with ChangeNotifier {
     } catch (e) {
       _errorMessage = 'Failed to load analytics data';
       debugPrint('Error initializing analytics: $e');
-      // Generate sample data as fallback
-      _generateSampleData();
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -127,7 +125,6 @@ class AnalyticsProvider with ChangeNotifier {
 
     try {
       if (_currentEventId == null) {
-        _generateSampleData();
         _isLoading = false;
         notifyListeners();
         return;
@@ -149,16 +146,10 @@ class AnalyticsProvider with ChangeNotifier {
       _processZoneComparisonData();
       _calculateSummaryStats();
 
-      // If no data from Firestore, generate sample data
-      if (_densityHistory.isEmpty && _incidents.isEmpty) {
-        _generateSampleData();
-      }
-
       _errorMessage = null;
     } catch (e) {
       _errorMessage = 'Failed to load historical data';
       debugPrint('Error loading historical data: $e');
-      _generateSampleData();
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -395,103 +386,6 @@ class AnalyticsProvider with ChangeNotifier {
           ? timestampPopulations.values.reduce((a, b) => a > b ? a : b)
           : 0;
     }
-  }
-
-  // Generate sample analytics data as fallback
-  void _generateSampleData() {
-    // Sample hourly density data
-    _hourlyDensityData = List.generate(24, (hour) {
-      double density;
-      if (hour < 8) {
-        density = 0.2 + (hour * 0.1);
-      } else if (hour < 12) {
-        density = 1.0 + ((hour - 8) * 0.5);
-      } else if (hour < 16) {
-        density = 3.0 - ((hour - 12) * 0.3);
-      } else if (hour < 20) {
-        density = 2.0 + ((hour - 16) * 0.6);
-      } else {
-        density = 4.4 - ((hour - 20) * 0.8);
-      }
-      return HourlyDensityPoint(
-        hour: hour,
-        averageDensity: density.clamp(0.0, 5.0),
-        label: '${hour.toString().padLeft(2, '0')}:00',
-      );
-    });
-
-    // Sample incident stats
-    _incidentStats = [
-      IncidentTypeData(type: 'medical', count: 12, displayName: 'Medical'),
-      IncidentTypeData(type: 'security', count: 8, displayName: 'Security'),
-      IncidentTypeData(
-          type: 'overcrowding', count: 15, displayName: 'Overcrowding'),
-      IncidentTypeData(type: 'other', count: 5, displayName: 'Other'),
-    ];
-
-    // Sample zone comparison
-    _zoneComparisonData = [
-      ZoneComparisonData(
-        zoneId: 'zone_north_stand',
-        zoneName: 'North Stand',
-        averageDensity: 2.8,
-        peakDensity: 4.2,
-        incidentCount: 5,
-      ),
-      ZoneComparisonData(
-        zoneId: 'zone_south_stand',
-        zoneName: 'South Stand',
-        averageDensity: 2.1,
-        peakDensity: 3.5,
-        incidentCount: 3,
-      ),
-      ZoneComparisonData(
-        zoneId: 'zone_east_wing',
-        zoneName: 'East Wing',
-        averageDensity: 3.2,
-        peakDensity: 4.8,
-        incidentCount: 8,
-      ),
-      ZoneComparisonData(
-        zoneId: 'zone_west_wing',
-        zoneName: 'West Wing',
-        averageDensity: 2.5,
-        peakDensity: 3.9,
-        incidentCount: 4,
-      ),
-      ZoneComparisonData(
-        zoneId: 'zone_food_court',
-        zoneName: 'Food Court',
-        averageDensity: 3.0,
-        peakDensity: 4.5,
-        incidentCount: 7,
-      ),
-    ];
-
-    // Sample peak density times
-    _peakDensityTimes = [
-      PeakDensityRecord(
-        time: DateTime.now().subtract(const Duration(hours: 3)),
-        zoneName: 'East Wing',
-        density: 4.8,
-      ),
-      PeakDensityRecord(
-        time: DateTime.now().subtract(const Duration(hours: 5)),
-        zoneName: 'Food Court',
-        density: 4.5,
-      ),
-      PeakDensityRecord(
-        time: DateTime.now().subtract(const Duration(hours: 2)),
-        zoneName: 'North Stand',
-        density: 4.2,
-      ),
-    ];
-
-    // Summary stats
-    _totalIncidents = 40;
-    _avgResponseTime = 8.5;
-    _peakAttendance = 62450;
-    _alertsSent = 23;
   }
 
   // Clear error message

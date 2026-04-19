@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import '../../l10n/app_localizations.dart';
 import '../../models/incident.dart';
 import '../../core/theme/app_colors.dart';
 
@@ -245,7 +246,7 @@ class IncidentInfoPopup extends StatelessWidget {
                   padding: EdgeInsets.zero,
                   textStyle: const TextStyle(fontSize: 10),
                 ),
-                child: const Text('View Details'),
+                child: Text(AppLocalizations.of(context)!.viewDetails),
               ),
             ),
           ],

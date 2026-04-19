@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../core/theme/app_colors.dart';
+import '../../l10n/app_localizations.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/common/gradient_scaffold.dart';
 import '../../widgets/common/glass_card.dart';
@@ -23,13 +24,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _confirmPasswordController = TextEditingController();
   String? _selectedRole;
 
-  final List<Map<String, dynamic>> _roles = [
-    {'value': 'fan', 'label': 'Fan', 'icon': Icons.person},
-    {'value': 'organizer', 'label': 'Event Organizer', 'icon': Icons.manage_accounts},
-    {'value': 'security', 'label': 'Security Team', 'icon': Icons.security},
-    {'value': 'emergency', 'label': 'Emergency Services', 'icon': Icons.medical_services},
-  ];
-
   @override
   void dispose() {
     _nameController.dispose();
@@ -39,13 +33,24 @@ class _RegisterScreenState extends State<RegisterScreen> {
     super.dispose();
   }
 
+  List<Map<String, dynamic>> _getRoles(AppLocalizations l) {
+    return [
+      {'value': 'fan', 'label': l.roleFan, 'icon': Icons.person},
+      {'value': 'organizer', 'label': l.roleOrganizer, 'icon': Icons.manage_accounts},
+      {'value': 'security', 'label': l.roleSecurity, 'icon': Icons.security},
+      {'value': 'emergency', 'label': l.roleEmergency, 'icon': Icons.medical_services},
+    ];
+  }
+
   Future<void> _handleRegister() async {
     if (!_formKey.currentState!.validate()) return;
+
+    final l = AppLocalizations.of(context)!;
 
     if (_passwordController.text != _confirmPasswordController.text) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Passwords do not match'),
+          content: Text(l.passwordsMismatch),
           backgroundColor: AppColors.red,
         ),
       );
@@ -55,7 +60,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (_selectedRole == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Please select a role'),
+          content: Text(l.pleaseSelectRole),
           backgroundColor: AppColors.red,
         ),
       );
@@ -75,7 +80,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       if (success) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('Registration successful!'),
+            content: Text(l.registrationSuccess),
             backgroundColor: AppColors.green,
           ),
         );
@@ -83,7 +88,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(authProvider.errorMessage ?? 'Registration failed'),
+            content: Text(authProvider.errorMessage ?? l.registrationFailed),
             backgroundColor: AppColors.red,
           ),
         );
@@ -93,6 +98,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final roles = _getRoles(l);
+
     return GradientScaffold(
       body: SafeArea(
         child: Consumer<AuthProvider>(
@@ -131,7 +139,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           children: [
                             // Title inside card
                             Text(
-                              'Create Your Account',
+                              l.createAccountTitle,
                               style: GoogleFonts.montserrat(
                                 fontSize: 24,
                                 fontWeight: FontWeight.bold,
@@ -143,16 +151,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                             // Name Field
                             CustomTextField(
-                              label: 'Name',
-                              hint: 'Enter your full name',
+                              label: l.nameLabel,
+                              hint: l.nameHint,
                               controller: _nameController,
                               textInputAction: TextInputAction.next,
                               validator: (value) {
                                 if (value == null || value.isEmpty) {
-                                  return 'Please enter your name';
+                                  return l.nameRequired;
                                 }
                                 if (value.length < 2) {
-                                  return 'Name must be at least 2 characters';
+                                  return l.nameMinLength;
                                 }
                                 return null;
                               },
@@ -161,17 +169,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                             // Email Field
                             CustomTextField(
-                              label: 'Email',
-                              hint: 'Enter your email',
+                              label: l.emailLabel,
+                              hint: l.emailHint,
                               controller: _emailController,
                               keyboardType: TextInputType.emailAddress,
                               textInputAction: TextInputAction.next,
                               validator: (value) {
                                 if (value == null || value.isEmpty) {
-                                  return 'Please enter your email';
+                                  return l.emailRequired;
                                 }
                                 if (!value.contains('@')) {
-                                  return 'Please enter a valid email';
+                                  return l.emailInvalid;
                                 }
                                 return null;
                               },
@@ -180,17 +188,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                             // Password Field
                             CustomTextField(
-                              label: 'Password',
-                              hint: 'Enter your password',
+                              label: l.passwordLabel,
+                              hint: l.passwordHint,
                               controller: _passwordController,
                               obscureText: true,
                               textInputAction: TextInputAction.next,
                               validator: (value) {
                                 if (value == null || value.isEmpty) {
-                                  return 'Please enter a password';
+                                  return l.passwordRequired;
                                 }
                                 if (value.length < 8) {
-                                  return 'Password must be at least 8 characters';
+                                  return l.passwordMinLength;
                                 }
                                 return null;
                               },
@@ -199,17 +207,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                             // Confirm Password Field
                             CustomTextField(
-                              label: 'Confirm Password',
-                              hint: 'Confirm your password',
+                              label: l.confirmPasswordLabel,
+                              hint: l.confirmPasswordHint,
                               controller: _confirmPasswordController,
                               obscureText: true,
                               textInputAction: TextInputAction.done,
                               validator: (value) {
                                 if (value == null || value.isEmpty) {
-                                  return 'Please confirm your password';
+                                  return l.confirmPasswordRequired;
                                 }
                                 if (value != _passwordController.text) {
-                                  return 'Passwords do not match';
+                                  return l.passwordsMismatch;
                                 }
                                 return null;
                               },
@@ -218,10 +226,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                             // Role Selection Dropdown
                             CustomDropdownField<String>(
-                              label: 'Select Your Role',
-                              hint: 'Select Role',
+                              label: l.selectRoleLabel,
+                              hint: l.selectRoleHint,
                               value: _selectedRole,
-                              items: _roles.map((role) {
+                              items: roles.map((role) {
                                 return DropdownMenuItem<String>(
                                   value: role['value'] as String,
                                   child: Row(
@@ -244,7 +252,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               },
                               validator: (value) {
                                 if (value == null) {
-                                  return 'Please select a role';
+                                  return l.pleaseSelectRole;
                                 }
                                 return null;
                               },
@@ -276,7 +284,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                         ),
                                       )
                                     : Text(
-                                        'Register',
+                                        l.registerButton,
                                         style: GoogleFonts.roboto(
                                           fontSize: 16,
                                           fontWeight: FontWeight.w600,
@@ -300,7 +308,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   elevation: 0,
                                 ),
                                 child: Text(
-                                  'Cancel',
+                                  l.cancelButton,
                                   style: GoogleFonts.roboto(
                                     fontSize: 16,
                                     fontWeight: FontWeight.w600,
@@ -315,7 +323,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 Text(
-                                  'Already have an account? ',
+                                  l.alreadyHaveAccount,
                                   style: GoogleFonts.roboto(
                                     fontSize: 14,
                                     color: Colors.white70,
@@ -324,7 +332,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 GestureDetector(
                                   onTap: () => context.pop(),
                                   child: Text(
-                                    'Login',
+                                    l.loginLink,
                                     style: GoogleFonts.roboto(
                                       fontSize: 14,
                                       color: AppColors.softTealBlue,

@@ -112,6 +112,39 @@ class AppColors {
     }
   }
 
+  // Get density color based on occupancy percentage.
+  // Thresholds derived from Kaggle Hajj & Umrah Crowd Management Dataset:
+  //   <50%  -> Green (Safe)
+  //   50-69% -> Yellow (Moderate)
+  //   70-84% -> Orange (High)
+  //   >=85% -> Red (Critical/Emergency)
+  static Color getDensityColorByOccupancy(double occupancyPercent) {
+    if (occupancyPercent >= 85) {
+      return densityCritical;
+    } else if (occupancyPercent >= 70) {
+      return densityHigh;
+    } else if (occupancyPercent >= 50) {
+      return densityModerate;
+    } else {
+      return densitySafe;
+    }
+  }
+
+  // Get density status text from occupancy percentage
+  static String getDensityStatusByOccupancy(double occupancyPercent) {
+    if (occupancyPercent >= 95) {
+      return 'EMERGENCY';
+    } else if (occupancyPercent >= 85) {
+      return 'CRITICAL';
+    } else if (occupancyPercent >= 70) {
+      return 'HIGH';
+    } else if (occupancyPercent >= 50) {
+      return 'MODERATE';
+    } else {
+      return 'SAFE';
+    }
+  }
+
   // Get density status text
   static String getDensityStatus(double peoplePerSqMeter) {
     if (peoplePerSqMeter >= 4.6) {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import '../../l10n/app_localizations.dart';
 import '../../core/theme/app_colors.dart';
 import '../../providers/message_provider.dart';
 import '../../providers/auth_provider.dart';
@@ -22,11 +23,14 @@ class _CommunicationHubScreenState extends State<CommunicationHubScreen> {
   final ScrollController _scrollController = ScrollController();
   bool _showChannelList = true;
   String _selectedMessageType = 'text';
+  String? _selectedChannel;
+  late MessageProvider messageProvider;
 
   @override
   void initState() {
     super.initState();
     _initializeData();
+    _selectedChannel = messageProvider.selectedChannelId;
   }
 
   @override
@@ -38,8 +42,7 @@ class _CommunicationHubScreenState extends State<CommunicationHubScreen> {
 
   Future<void> _initializeData() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final messageProvider =
-        Provider.of<MessageProvider>(context, listen: false);
+    messageProvider = Provider.of<MessageProvider>(context, listen: false);
 
     if (authProvider.currentUser != null) {
       await messageProvider.initialize(
@@ -97,7 +100,7 @@ class _CommunicationHubScreenState extends State<CommunicationHubScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         title: Text(
-          'Communication Hub',
+          AppLocalizations.of(context)!.communicationHub,
           style: GoogleFonts.montserrat(
             fontSize: 20,
             fontWeight: FontWeight.bold,
@@ -151,6 +154,7 @@ class _CommunicationHubScreenState extends State<CommunicationHubScreen> {
                     messageProvider: messageProvider,
                     messageController: _messageController,
                     scrollController: _scrollController,
+                    selectedChannel: messageProvider.selectedChannelId,
                     selectedMessageType: _selectedMessageType,
                     onMessageTypeChanged: (type) {
                       setState(() => _selectedMessageType = type);
@@ -177,6 +181,7 @@ class _CommunicationHubScreenState extends State<CommunicationHubScreen> {
             messageProvider: messageProvider,
             messageController: _messageController,
             scrollController: _scrollController,
+            selectedChannel: messageProvider.selectedChannelId,
             selectedMessageType: _selectedMessageType,
             onMessageTypeChanged: (type) {
               setState(() => _selectedMessageType = type);
@@ -209,7 +214,7 @@ class _ChannelListPanel extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
           child: Text(
-            'Channels',
+            AppLocalizations.of(context)!.channelsSection,
             style: GoogleFonts.montserrat(
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -221,7 +226,7 @@ class _ChannelListPanel extends StatelessWidget {
           child: channels.isEmpty
               ? Center(
                   child: Text(
-                    'No channels available',
+                    AppLocalizations.of(context)!.noChannels,
                     style:
                         GoogleFonts.roboto(fontSize: 14, color: Colors.white38),
                   ),
@@ -370,16 +375,19 @@ class _ChatPanel extends StatelessWidget {
   final MessageProvider messageProvider;
   final TextEditingController messageController;
   final ScrollController scrollController;
+  final String? selectedChannel;
   final String selectedMessageType;
-  final Function(String) onMessageTypeChanged;
+  final Function(String)? onMessageTypeChanged;
   final VoidCallback onSend;
 
   const _ChatPanel({
+    super.key,
     required this.messageProvider,
     required this.messageController,
     required this.scrollController,
+    required this.selectedChannel,
     required this.selectedMessageType,
-    required this.onMessageTypeChanged,
+    this.onMessageTypeChanged,
     required this.onSend,
   });
 
@@ -397,7 +405,7 @@ class _ChatPanel extends StatelessWidget {
                 size: 64, color: Colors.white24),
             const SizedBox(height: 16),
             Text(
-              'Select a channel to start messaging',
+              AppLocalizations.of(context)!.selectChannelToMessage,
               style: GoogleFonts.roboto(fontSize: 16, color: Colors.white54),
             ),
           ],
@@ -419,7 +427,7 @@ class _ChatPanel extends StatelessWidget {
           child: Row(
             children: [
               Text(
-                _getChannelName(selectedChannel),
+                _getChannelName(selectedChannel, context),
                 style: GoogleFonts.montserrat(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
@@ -449,13 +457,13 @@ class _ChatPanel extends StatelessWidget {
                           size: 48, color: Colors.white24),
                       const SizedBox(height: 12),
                       Text(
-                        'No messages yet',
+                        AppLocalizations.of(context)!.noMessages,
                         style: GoogleFonts.roboto(
                             fontSize: 14, color: Colors.white38),
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Start the conversation',
+                        AppLocalizations.of(context)!.startConversation,
                         style: GoogleFonts.roboto(
                             fontSize: 12, color: Colors.white24),
                       ),
@@ -503,8 +511,8 @@ class _ChatPanel extends StatelessWidget {
                 const SizedBox(width: 8),
                 Text(
                   selectedMessageType == 'alert'
-                      ? 'Sending as Alert'
-                      : 'Sending as Incident Update',
+                      ? AppLocalizations.of(context)!.sendingAsAlert
+                      : AppLocalizations.of(context)!.sendingAsIncidentUpdate,
                   style: GoogleFonts.roboto(
                     fontSize: 12,
                     color: Colors.white54,
@@ -512,7 +520,7 @@ class _ChatPanel extends StatelessWidget {
                 ),
                 const Spacer(),
                 GestureDetector(
-                  onTap: () => onMessageTypeChanged('text'),
+                  onTap: () => onMessageTypeChanged?.call('text'),
                   child: const Icon(Icons.close,
                       size: 16, color: Colors.white38),
                 ),
@@ -550,7 +558,7 @@ class _ChatPanel extends StatelessWidget {
                           const Icon(Icons.chat, size: 18,
                               color: Colors.white70),
                           const SizedBox(width: 8),
-                          Text('Text Message',
+                          Text(AppLocalizations.of(context)!.textMessage,
                               style: GoogleFonts.roboto(color: Colors.white)),
                         ],
                       ),
@@ -562,7 +570,7 @@ class _ChatPanel extends StatelessWidget {
                           Icon(Icons.warning_amber,
                               size: 18, color: AppColors.orange),
                           const SizedBox(width: 8),
-                          Text('Alert',
+                          Text(AppLocalizations.of(context)!.alertMessage,
                               style: GoogleFonts.roboto(color: Colors.white)),
                         ],
                       ),
@@ -573,7 +581,7 @@ class _ChatPanel extends StatelessWidget {
                         children: [
                           Icon(Icons.update, size: 18, color: AppColors.blue),
                           const SizedBox(width: 8),
-                          Text('Incident Update',
+                          Text(AppLocalizations.of(context)!.incidentUpdate,
                               style: GoogleFonts.roboto(color: Colors.white)),
                         ],
                       ),
@@ -596,7 +604,7 @@ class _ChatPanel extends StatelessWidget {
                         fontSize: 14,
                       ),
                       decoration: InputDecoration(
-                        hintText: 'Type a message...',
+                        hintText: AppLocalizations.of(context)!.typeMessage,
                         hintStyle: GoogleFonts.roboto(
                           color: Colors.white38,
                           fontSize: 14,
@@ -635,12 +643,12 @@ class _ChatPanel extends StatelessWidget {
     );
   }
 
-  String _getChannelName(String channelId) {
+  String _getChannelName(String channelId, BuildContext context) {
     final channels = messageProvider.getChannels();
     try {
       return channels.firstWhere((c) => c.id == channelId).name;
     } catch (e) {
-      return 'Channel';
+      return AppLocalizations.of(context)!.channel;
     }
   }
 }

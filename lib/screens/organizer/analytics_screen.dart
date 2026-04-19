@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
+import '../../l10n/app_localizations.dart';
 import '../../core/theme/app_colors.dart';
 import '../../services/database_service.dart';
 import '../../providers/analytics_provider.dart';
@@ -76,7 +77,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         title: Text(
-          'Analytics',
+          AppLocalizations.of(context)!.analyticsTitle,
           style: GoogleFonts.montserrat(
             fontSize: 20,
             fontWeight: FontWeight.bold,
@@ -204,7 +205,7 @@ class _SummaryStatsSection extends StatelessWidget {
           children: [
             Expanded(
               child: _SummaryStatCard(
-                title: 'Total Incidents',
+                title: AppLocalizations.of(context)!.totalIncidents,
                 value: '${analyticsProvider.totalIncidents}',
                 icon: Icons.report_problem_outlined,
                 color: AppColors.orange,
@@ -213,7 +214,7 @@ class _SummaryStatsSection extends StatelessWidget {
             const SizedBox(width: 12),
             Expanded(
               child: _SummaryStatCard(
-                title: 'Avg Response',
+                title: AppLocalizations.of(context)!.avgResponse,
                 value: '${analyticsProvider.avgResponseTime.toStringAsFixed(1)}m',
                 icon: Icons.timer_outlined,
                 color: AppColors.blue,
@@ -226,7 +227,7 @@ class _SummaryStatsSection extends StatelessWidget {
           children: [
             Expanded(
               child: _SummaryStatCard(
-                title: 'Peak Attendance',
+                title: AppLocalizations.of(context)!.peakAttendance,
                 value: _formatNumber(analyticsProvider.peakAttendance),
                 icon: Icons.groups_outlined,
                 color: AppColors.softTealBlue,
@@ -235,7 +236,7 @@ class _SummaryStatsSection extends StatelessWidget {
             const SizedBox(width: 12),
             Expanded(
               child: _SummaryStatCard(
-                title: 'Alerts Sent',
+                title: AppLocalizations.of(context)!.alertsSent,
                 value: '${analyticsProvider.alertsSent}',
                 icon: Icons.campaign_outlined,
                 color: AppColors.red,
@@ -328,7 +329,7 @@ class _DensityLineChart extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Crowd Density Over Time',
+            AppLocalizations.of(context)!.crowdDensityOverTime,
             style: GoogleFonts.montserrat(
               fontSize: 16,
               fontWeight: FontWeight.bold,
@@ -337,7 +338,7 @@ class _DensityLineChart extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            'Average people per m\u00B2 by hour',
+            AppLocalizations.of(context)!.crowdDensitySubtitle,
             style: GoogleFonts.roboto(
               fontSize: 12,
               color: Colors.white54,
@@ -349,7 +350,7 @@ class _DensityLineChart extends StatelessWidget {
             child: data.isEmpty
                 ? Center(
                     child: Text(
-                      'No density data available',
+                      AppLocalizations.of(context)!.noDensityData,
                       style: GoogleFonts.roboto(
                           fontSize: 14, color: Colors.white38),
                     ),
@@ -458,12 +459,12 @@ class _DensityLineChart extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              _ChartLegendItem(label: 'Safe (<1.5)', color: AppColors.green),
+              _ChartLegendItem(label: AppLocalizations.of(context)!.safeDensity, color: AppColors.green),
               _ChartLegendItem(
-                  label: 'Moderate', color: AppColors.yellow),
-              _ChartLegendItem(label: 'High', color: AppColors.orange),
+                  label: AppLocalizations.of(context)!.moderateDensity, color: AppColors.yellow),
+              _ChartLegendItem(label: AppLocalizations.of(context)!.highDensity, color: AppColors.orange),
               _ChartLegendItem(
-                  label: 'Critical (>4.5)', color: AppColors.red),
+                  label: AppLocalizations.of(context)!.criticalDensity, color: AppColors.red),
             ],
           ),
         ],
@@ -501,7 +502,7 @@ class _IncidentBarChart extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Incidents by Type',
+            AppLocalizations.of(context)!.incidentsByType,
             style: GoogleFonts.montserrat(
               fontSize: 16,
               fontWeight: FontWeight.bold,
@@ -510,7 +511,7 @@ class _IncidentBarChart extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            'Total incidents breakdown',
+            AppLocalizations.of(context)!.totalIncidentsBreakdown,
             style: GoogleFonts.roboto(
               fontSize: 12,
               color: Colors.white54,
@@ -522,7 +523,7 @@ class _IncidentBarChart extends StatelessWidget {
             child: data.isEmpty
                 ? Center(
                     child: Text(
-                      'No incident data available',
+                      AppLocalizations.of(context)!.noIncidentData,
                       style: GoogleFonts.roboto(
                           fontSize: 14, color: Colors.white38),
                     ),
@@ -627,11 +628,11 @@ class _IncidentBarChart extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              _ChartLegendItem(label: 'Medical', color: AppColors.red),
-              _ChartLegendItem(label: 'Security', color: AppColors.orange),
+              _ChartLegendItem(label: AppLocalizations.of(context)!.medicalType, color: AppColors.red),
+              _ChartLegendItem(label: AppLocalizations.of(context)!.securityType, color: AppColors.orange),
               _ChartLegendItem(
-                  label: 'Overcrowding', color: AppColors.yellow),
-              _ChartLegendItem(label: 'Other', color: AppColors.blue),
+                  label: AppLocalizations.of(context)!.overcrowdingType, color: AppColors.yellow),
+              _ChartLegendItem(label: AppLocalizations.of(context)!.otherType, color: AppColors.blue),
             ],
           ),
         ],
@@ -668,7 +669,7 @@ class _ZoneOccupancyPieChart extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Zone Occupancy Distribution',
+            AppLocalizations.of(context)!.zoneOccupancyTitle,
             style: GoogleFonts.montserrat(
               fontSize: 16,
               fontWeight: FontWeight.bold,
@@ -689,7 +690,7 @@ class _ZoneOccupancyPieChart extends StatelessWidget {
             child: data.isEmpty
                 ? Center(
                     child: Text(
-                      'No zone data available',
+                      AppLocalizations.of(context)!.noZoneData,
                       style: GoogleFonts.roboto(
                           fontSize: 14, color: Colors.white38),
                     ),

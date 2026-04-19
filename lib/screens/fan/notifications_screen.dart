@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../core/theme/app_colors.dart';
+import '../../l10n/app_localizations.dart';
 import '../../providers/alert_provider.dart';
+import '../../providers/auth_provider.dart';
 import '../../widgets/common/gradient_scaffold.dart';
 
 class NotificationsScreen extends StatefulWidget {
@@ -17,6 +19,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+
     return GradientScaffold(
       body: Consumer<AlertProvider>(
         builder: (context, alertProvider, _) {
@@ -34,7 +38,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'People Alerts',
+                        l.peopleAlerts,
                         style: GoogleFonts.montserrat(
                           fontSize: 22,
                           fontWeight: FontWeight.bold,
@@ -61,7 +65,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                               ),
                               const SizedBox(height: 16),
                               Text(
-                                'No alerts at the moment',
+                                l.noAlertsTitle,
                                 style: GoogleFonts.montserrat(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
@@ -70,7 +74,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                               ),
                               const SizedBox(height: 8),
                               Text(
-                                'You\'ll be notified of any safety updates',
+                                l.noAlertsSubtitle,
                                 style: GoogleFonts.roboto(
                                   fontSize: 14,
                                   color: Colors.white54,
@@ -113,17 +117,17 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
                       _FilterTab(
-                        label: 'All',
+                        label: l.allFilter,
                         isSelected: _selectedFilter == 0,
                         onTap: () => setState(() => _selectedFilter = 0),
                       ),
                       _FilterTab(
-                        label: 'Active',
+                        label: l.activeFilter,
                         isSelected: _selectedFilter == 1,
                         onTap: () => setState(() => _selectedFilter = 1),
                       ),
                       _FilterTab(
-                        label: 'Resolved',
+                        label: l.resolvedFilter,
                         isSelected: _selectedFilter == 2,
                         onTap: () => setState(() => _selectedFilter = 2),
                       ),
@@ -150,6 +154,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   void _showAlertDetails(BuildContext context, dynamic alert, AlertProvider alertProvider) {
+    final l = AppLocalizations.of(context)!;
+
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -179,7 +185,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
             // Title
             Text(
-              '${_getSeverityLabel(alert.severity)}: ${alert.typeDisplayName}',
+              '${_getSeverityLabel(alert.severity, l)}: ${alert.typeDisplayName}',
               style: GoogleFonts.montserrat(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
@@ -204,17 +210,17 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               children: [
                 Expanded(
                   child: _InfoBox(
-                    label: 'Severity',
-                    value: _getSeverityLabel(alert.severity),
+                    label: l.severityLabel,
+                    value: _getSeverityLabel(alert.severity, l),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: _InfoBox(
-                    label: 'Affected Zone',
+                    label: l.affectedZone,
                     value: alert.targetZones != null && alert.targetZones!.isNotEmpty
                         ? alert.targetZones!.first.replaceAll('zone_', '').replaceAll('_', ' ')
-                        : 'All zones',
+                        : l.allZones,
                   ),
                 ),
               ],
@@ -226,14 +232,19 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               width: double.infinity,
               height: 52,
               child: ElevatedButton(
-                onPressed: () {
+                onPressed: () async {
                   Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: const Text('Alert acknowledged'),
-                      backgroundColor: AppColors.blue,
-                    ),
-                  );
+                  final success = await alertProvider.dismissAlert(alert.id);
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(success
+                            ? l.alertAcknowledged
+                            : l.alertAcknowledgeFailed),
+                        backgroundColor: success ? AppColors.blue : AppColors.red,
+                      ),
+                    );
+                  }
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.blue,
@@ -244,7 +255,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   elevation: 0,
                 ),
                 child: Text(
-                  'Acknowledge',
+                  l.acknowledgeButton,
                   style: GoogleFonts.roboto(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
@@ -259,14 +270,29 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               width: double.infinity,
               height: 52,
               child: ElevatedButton(
-                onPressed: () {
+                onPressed: () async {
                   Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: const Text('Emergency team notified'),
-                      backgroundColor: AppColors.green,
-                    ),
+                  final authProvider = Provider.of<AuthProvider>(context, listen: false);
+                  final user = authProvider.currentUser;
+                  if (user == null) return;
+
+                  final success = await alertProvider.sendEmergencyAlert(
+                    eventId: alert.eventId,
+                    createdBy: user.id,
+                    createdByName: user.name,
+                    message: 'Fan reported emergency for: ${alert.typeDisplayName} - ${alert.message}',
+                    targetZones: alert.targetZones,
                   );
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(success
+                            ? l.emergencyNotified
+                            : l.alertAcknowledgeFailed),
+                        backgroundColor: success ? AppColors.green : AppColors.red,
+                      ),
+                    );
+                  }
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.green,
@@ -277,7 +303,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   elevation: 0,
                 ),
                 child: Text(
-                  'Notify Emergency',
+                  l.notifyEmergency,
                   style: GoogleFonts.roboto(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
@@ -292,14 +318,19 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               width: double.infinity,
               height: 52,
               child: OutlinedButton(
-                onPressed: () {
+                onPressed: () async {
                   Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: const Text('Alert marked as resolved'),
-                      backgroundColor: AppColors.green,
-                    ),
-                  );
+                  final success = await alertProvider.resolveAlert(alert.id);
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(success
+                            ? l.alertResolved
+                            : l.alertAcknowledgeFailed),
+                        backgroundColor: success ? AppColors.green : AppColors.red,
+                      ),
+                    );
+                  }
                 },
                 style: OutlinedButton.styleFrom(
                   foregroundColor: Colors.white,
@@ -309,7 +340,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   ),
                 ),
                 child: Text(
-                  'Mark Resolved',
+                  l.markResolved,
                   style: GoogleFonts.roboto(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
@@ -324,17 +355,17 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     );
   }
 
-  String _getSeverityLabel(String severity) {
+  String _getSeverityLabel(String severity, AppLocalizations l) {
     switch (severity.toLowerCase()) {
       case 'critical':
-        return 'Critical';
+        return l.criticalLabel;
       case 'high':
-        return 'High';
+        return l.highLabel;
       case 'medium':
       case 'warning':
-        return 'Moderate';
+        return l.moderateLabel;
       default:
-        return 'Info';
+        return l.infoLabel;
     }
   }
 }
@@ -347,8 +378,9 @@ class _AlertCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     final color = _getSeverityColor(alert.severity);
-    final timeAgo = _getTimeAgo(alert.createdAt);
+    final timeAgo = _getTimeAgo(alert.createdAt, l);
 
     return GestureDetector(
       onTap: onTap,
@@ -399,7 +431,7 @@ class _AlertCard extends StatelessWidget {
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  _getSeverityLabel(alert.severity),
+                  _getSeverityLabel(alert.severity, l),
                   style: GoogleFonts.roboto(
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
@@ -434,32 +466,32 @@ class _AlertCard extends StatelessWidget {
     }
   }
 
-  String _getSeverityLabel(String severity) {
+  String _getSeverityLabel(String severity, AppLocalizations l) {
     switch (severity.toLowerCase()) {
       case 'critical':
-        return 'Critical';
+        return l.criticalLabel;
       case 'high':
-        return 'High';
+        return l.highLabel;
       case 'medium':
       case 'warning':
-        return 'Moderate';
+        return l.moderateLabel;
       case 'resolved':
-        return 'Resolved';
+        return l.resolvedLabel;
       default:
-        return 'Info';
+        return l.infoLabel;
     }
   }
 
-  String _getTimeAgo(DateTime dateTime) {
+  String _getTimeAgo(DateTime dateTime, AppLocalizations l) {
     final difference = DateTime.now().difference(dateTime);
     if (difference.inMinutes < 1) {
-      return 'Just now';
+      return l.justNow;
     } else if (difference.inMinutes < 60) {
-      return '${difference.inMinutes}m ago';
+      return l.minutesAgo(difference.inMinutes);
     } else if (difference.inHours < 24) {
-      return '${difference.inHours}h ago';
+      return l.hoursAgo(difference.inHours);
     } else {
-      return '${difference.inDays}d ago';
+      return l.daysAgo(difference.inDays);
     }
   }
 }

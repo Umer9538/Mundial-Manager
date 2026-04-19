@@ -16,6 +16,10 @@ import 'providers/alert_provider.dart';
 import 'providers/staff_provider.dart';
 import 'providers/analytics_provider.dart';
 import 'providers/message_provider.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'l10n/app_localizations.dart';
+import 'services/dataset_service.dart';
+import 'providers/locale_provider.dart';
 
 // Background message handler - must be a top-level function
 @pragma('vm:entry-point')
@@ -48,6 +52,14 @@ void main() async {
     DeviceOrientation.portraitDown,
   ]);
 
+  // Initialize the Kaggle crowd dataset for simulation
+  try {
+    await DatasetService.instance.initialize();
+    debugPrint('Crowd dataset loaded: ${DatasetService.instance.statistics['totalRecords']} records');
+  } catch (e) {
+    debugPrint('Dataset init error (non-fatal): $e');
+  }
+
   // Log current environment
   debugPrint('Running in ${AppConfig.environment.name} mode');
   debugPrint('Demo features: ${AppConfig.showDemoFeatures}');
@@ -62,6 +74,7 @@ class MundialManagerApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
+        ChangeNotifierProvider(create: (_) => LocaleProvider()),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => CrowdProvider()),
         ChangeNotifierProvider(create: (_) => IncidentProvider()),
@@ -70,11 +83,21 @@ class MundialManagerApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AnalyticsProvider()),
         ChangeNotifierProvider(create: (_) => MessageProvider()),
       ],
-      child: MaterialApp.router(
-        title: AppConstants.appName,
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.lightTheme,
-        routerConfig: AppRouter.router,
+      child: Consumer<LocaleProvider>(
+        builder: (context, localeProvider, _) => MaterialApp.router(
+          title: AppConstants.appName,
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.lightTheme,
+          routerConfig: AppRouter.router,
+          locale: localeProvider.locale,
+          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+        ),
       ),
     );
   }

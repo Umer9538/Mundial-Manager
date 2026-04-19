@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../l10n/app_localizations.dart';
 import '../../core/theme/app_colors.dart';
 import '../../services/database_service.dart';
 import '../../providers/crowd_provider.dart';
@@ -16,6 +17,7 @@ import '../../widgets/common/custom_text_field.dart';
 import '../../widgets/common/profile_dialogs.dart';
 import '../common/report_incident_screen.dart';
 import '../../widgets/map/crowd_heatmap.dart';
+import '../fan/settings_screen.dart';
 import 'package:latlong2/latlong.dart';
 
 class SecurityDashboard extends StatefulWidget {
@@ -41,12 +43,16 @@ class _SecurityDashboardState extends State<SecurityDashboard> {
     _currentEventId = event?.id;
 
     final crowdProvider = Provider.of<CrowdProvider>(context, listen: false);
+    final alertProvider = Provider.of<AlertProvider>(context, listen: false);
 
     await Future.wait([
       crowdProvider.initialize(eventId: _currentEventId),
       Provider.of<IncidentProvider>(context, listen: false).initialize(eventId: _currentEventId),
-      Provider.of<AlertProvider>(context, listen: false).initialize(eventId: _currentEventId),
+      alertProvider.initialize(eventId: _currentEventId),
     ]);
+
+    // Connect auto-alert system (dataset-driven density alerts)
+    crowdProvider.connectAlertProvider(alertProvider);
     crowdProvider.startRealTimeUpdates(eventId: _currentEventId);
   }
 
@@ -69,6 +75,7 @@ class _SecurityDashboardState extends State<SecurityDashboard> {
             _DashboardTab(
               isOnDuty: _isOnDuty,
               onToggleDuty: () => setState(() => _isOnDuty = !_isOnDuty),
+              onNavigate: _onItemTapped,
               onReportIncident: () {
                 Navigator.push(
                   context,
@@ -109,28 +116,28 @@ class _SecurityDashboardState extends State<SecurityDashboard> {
               _NavItem(
                 icon: Icons.home_outlined,
                 activeIcon: Icons.home,
-                label: 'Home',
+                label: AppLocalizations.of(context)!.homeTab,
                 isSelected: _selectedIndex == 0,
                 onTap: () => _onItemTapped(0),
               ),
               _NavItem(
                 icon: Icons.radar_outlined,
                 activeIcon: Icons.radar,
-                label: 'Zones',
+                label: AppLocalizations.of(context)!.zonesTab,
                 isSelected: _selectedIndex == 1,
                 onTap: () => _onItemTapped(1),
               ),
               _NavItem(
-                icon: Icons.map_outlined,
-                activeIcon: Icons.map,
-                label: 'Map',
+                icon: Icons.notifications_outlined,
+                activeIcon: Icons.notifications,
+                label: AppLocalizations.of(context)!.alertsTab,
                 isSelected: _selectedIndex == 2,
                 onTap: () => _onItemTapped(2),
               ),
               _NavItem(
                 icon: Icons.person_outline,
                 activeIcon: Icons.person,
-                label: 'Profile',
+                label: AppLocalizations.of(context)!.profileTab,
                 isSelected: _selectedIndex == 3,
                 onTap: () => _onItemTapped(3),
               ),
@@ -173,7 +180,7 @@ class _SecurityDashboardState extends State<SecurityDashboard> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Report Incident',
+                    AppLocalizations.of(context)!.reportIncident,
                     style: GoogleFonts.montserrat(
                       fontSize: 22,
                       fontWeight: FontWeight.bold,
@@ -188,8 +195,8 @@ class _SecurityDashboardState extends State<SecurityDashboard> {
               ),
               const SizedBox(height: 24),
               CustomDropdownField<String>(
-                label: 'Select Zone',
-                hint: 'Choose zone',
+                label: AppLocalizations.of(context)!.selectZoneLabel,
+                hint: AppLocalizations.of(context)!.chooseZoneHint,
                 value: selectedZone.isNotEmpty ? selectedZone : null,
                 items: zones.map((zone) => DropdownMenuItem(
                   value: zone.name,
@@ -199,22 +206,22 @@ class _SecurityDashboardState extends State<SecurityDashboard> {
               ),
               const SizedBox(height: 16),
               CustomDropdownField<String>(
-                label: 'Incident Type',
-                hint: 'Select type',
+                label: AppLocalizations.of(context)!.incidentTypeLabel,
+                hint: AppLocalizations.of(context)!.selectTypeHint,
                 value: selectedType,
-                items: const [
-                  DropdownMenuItem(value: 'crowd', child: Text('Crowd Issue')),
-                  DropdownMenuItem(value: 'medical', child: Text('Medical Emergency')),
-                  DropdownMenuItem(value: 'security', child: Text('Security Threat')),
-                  DropdownMenuItem(value: 'fire', child: Text('Fire Hazard')),
-                  DropdownMenuItem(value: 'other', child: Text('Other')),
+                items: [
+                  DropdownMenuItem(value: 'crowd', child: Text(AppLocalizations.of(context)!.crowdIssue)),
+                  DropdownMenuItem(value: 'medical', child: Text(AppLocalizations.of(context)!.medicalEmergency)),
+                  DropdownMenuItem(value: 'security', child: Text(AppLocalizations.of(context)!.securityThreat)),
+                  DropdownMenuItem(value: 'fire', child: Text(AppLocalizations.of(context)!.fireHazard)),
+                  DropdownMenuItem(value: 'other', child: Text(AppLocalizations.of(context)!.otherType)),
                 ],
                 onChanged: (value) => selectedType = value!,
               ),
               const SizedBox(height: 16),
               CustomTextField(
-                label: 'Description',
-                hint: 'Enter details about the incident...',
+                label: AppLocalizations.of(context)!.descriptionLabel,
+                hint: AppLocalizations.of(context)!.descriptionHint,
                 controller: descriptionController,
                 maxLines: 3,
               ),
@@ -226,7 +233,7 @@ class _SecurityDashboardState extends State<SecurityDashboard> {
                     Icon(Icons.attach_file, color: Colors.white54, size: 20),
                     const SizedBox(width: 12),
                     Text(
-                      'Attach Image',
+                      AppLocalizations.of(context)!.attachImage,
                       style: GoogleFonts.roboto(
                         fontSize: 14,
                         color: Colors.white70,
@@ -244,7 +251,7 @@ class _SecurityDashboardState extends State<SecurityDashboard> {
                     Icon(Icons.check_circle, color: AppColors.green, size: 18),
                     const SizedBox(width: 8),
                     Text(
-                      'Incident sent to Security Team.',
+                      AppLocalizations.of(context)!.incidentSentToSecurity,
                       style: GoogleFonts.roboto(
                         fontSize: 12,
                         color: AppColors.green,
@@ -255,7 +262,7 @@ class _SecurityDashboardState extends State<SecurityDashboard> {
               ),
               const SizedBox(height: 20),
               CustomButton.primary(
-                text: 'Submit Report',
+                text: AppLocalizations.of(context)!.submitReport,
                 icon: Icons.send,
                 onPressed: () async {
                   if (descriptionController.text.isNotEmpty) {
@@ -265,7 +272,7 @@ class _SecurityDashboardState extends State<SecurityDashboard> {
                     final crowdProv = Provider.of<CrowdProvider>(context, listen: false);
                     final defaultLocation = crowdProv.allZones.isNotEmpty
                         ? crowdProv.allZones.first.center
-                        : const LatLng(24.7257, 46.8222);
+                        : const LatLng(24.7133, 46.8253);
                     await incidentProvider.reportIncident(
                       eventId: _currentEventId ?? '',
                       reportedBy: authProvider.currentUser!.id,
@@ -280,7 +287,7 @@ class _SecurityDashboardState extends State<SecurityDashboard> {
                       Navigator.pop(context);
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: const Text('Incident reported successfully!'),
+                          content: Text(AppLocalizations.of(context)!.incidentReportedSuccess),
                           backgroundColor: AppColors.green,
                         ),
                       );
@@ -290,7 +297,7 @@ class _SecurityDashboardState extends State<SecurityDashboard> {
               ),
               const SizedBox(height: 12),
               CustomButton.secondary(
-                text: 'Cancel',
+                text: AppLocalizations.of(context)!.cancelButton,
                 onPressed: () => Navigator.pop(context),
               ),
             ],
@@ -350,11 +357,13 @@ class _NavItem extends StatelessWidget {
 class _DashboardTab extends StatelessWidget {
   final bool isOnDuty;
   final VoidCallback onToggleDuty;
+  final Function(int) onNavigate;
   final VoidCallback onReportIncident;
 
   const _DashboardTab({
     required this.isOnDuty,
     required this.onToggleDuty,
+    required this.onNavigate,
     required this.onReportIncident,
   });
 
@@ -383,7 +392,7 @@ class _DashboardTab extends StatelessWidget {
                     Icon(Icons.shield, color: AppColors.softTealBlue, size: 24),
                     const SizedBox(width: 8),
                     Text(
-                      'Security Dashboard',
+                      AppLocalizations.of(context)!.securityDashboard,
                       style: GoogleFonts.montserrat(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -417,7 +426,7 @@ class _DashboardTab extends StatelessWidget {
                             ),
                             const SizedBox(width: 6),
                             Text(
-                              isOnDuty ? 'On Duty' : 'Off Duty',
+                              isOnDuty ? AppLocalizations.of(context)!.onDuty : AppLocalizations.of(context)!.offDuty,
                               style: GoogleFonts.roboto(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
@@ -439,25 +448,13 @@ class _DashboardTab extends StatelessWidget {
                   builder: (context) {
                     final userName = Provider.of<AuthProvider>(context, listen: false)
                         .currentUser?.name ?? 'Officer';
-                    return Row(
-                      children: [
-                        Text(
-                          'Welcome, ',
-                          style: GoogleFonts.poppins(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w400,
-                            color: Colors.white70,
-                          ),
-                        ),
-                        Text(
-                          userName.split(' ').first,
-                          style: GoogleFonts.poppins(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.softTealBlue,
-                          ),
-                        ),
-                      ],
+                    return Text(
+                      AppLocalizations.of(context)!.welcomeUser(userName.split(' ').first),
+                      style: GoogleFonts.poppins(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w400,
+                        color: Colors.white70,
+                      ),
                     );
                   },
                 ),
@@ -487,28 +484,28 @@ class _DashboardTab extends StatelessWidget {
       children: [
         _ActionTile(
           icon: Icons.groups_outlined,
-          label: 'Monitor Crowd',
+          label: AppLocalizations.of(context)!.monitorCrowd,
           color: AppColors.softTealBlue,
-          onTap: () {},
+          onTap: () => onNavigate(1),
         ),
         _ActionTile(
           icon: Icons.report_problem_outlined,
-          label: 'Report Incident',
+          label: AppLocalizations.of(context)!.reportIncident,
           color: AppColors.red,
           backgroundColor: AppColors.red.withOpacity(0.15),
           onTap: onReportIncident,
         ),
         _ActionTile(
           icon: Icons.notifications_active_outlined,
-          label: 'View Alerts',
+          label: AppLocalizations.of(context)!.viewAlertsButton,
           color: Colors.white70,
-          onTap: () {},
+          onTap: () => onNavigate(2),
         ),
         _ActionTile(
           icon: Icons.group_outlined,
-          label: 'Team Updates',
+          label: AppLocalizations.of(context)!.teamUpdatesButton,
           color: Colors.white70,
-          onTap: () {},
+          onTap: () => context.push('/communication'),
         ),
       ],
     );
@@ -524,7 +521,7 @@ class _DashboardTab extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Active Alerts',
+              AppLocalizations.of(context)!.activeAlertsTitle,
               style: GoogleFonts.montserrat(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -537,7 +534,7 @@ class _DashboardTab extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 child: Text(
-                  'No active alerts',
+                  AppLocalizations.of(context)!.noActiveAlerts,
                   style: GoogleFonts.roboto(
                     fontSize: 14,
                     color: Colors.white54,
@@ -551,7 +548,7 @@ class _DashboardTab extends StatelessWidget {
                   title: alert.typeDisplayName,
                   subtitle: alert.message,
                   severity: alert.severity,
-                  onTap: () {},
+                  onTap: () => onNavigate(2),
                 ),
               )),
           ],
@@ -711,7 +708,7 @@ class _MonitoringTab extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'Live Crowd Monitoring',
+                        AppLocalizations.of(context)!.liveCrowdMonitoring,
                         style: GoogleFonts.montserrat(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
@@ -741,7 +738,7 @@ class _MonitoringTab extends StatelessWidget {
                             final sortedZones = List.of(crowdProvider.crowdData)
                               ..sort((a, b) => b.occupancyPercentageRounded.compareTo(a.occupancyPercentageRounded));
                             final topZone = sortedZones.first;
-                            final statusLabel = topZone.isCritical ? 'Critical' : topZone.needsAttention ? 'High Density' : 'Normal';
+                            final statusLabel = topZone.isCritical ? AppLocalizations.of(context)!.criticalDensityStatus : topZone.needsAttention ? AppLocalizations.of(context)!.highDensityStatus : AppLocalizations.of(context)!.normalDensityStatus;
                             final statusColor = topZone.isCritical ? AppColors.red : topZone.needsAttention ? AppColors.orange : AppColors.green;
                             return GlassCard(
                               padding: const EdgeInsets.all(12),
@@ -764,7 +761,7 @@ class _MonitoringTab extends StatelessWidget {
                                     ),
                                   ),
                                   Text(
-                                    '${topZone.occupancyPercentageRounded}% Capacity',
+                                    '${topZone.occupancyPercentageRounded}${AppLocalizations.of(context)!.capacityLabel}',
                                     style: GoogleFonts.roboto(
                                       fontSize: 11,
                                       color: Colors.white54,
@@ -824,14 +821,14 @@ class _MonitoringTab extends StatelessWidget {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'Current Avg. Density',
+                                  AppLocalizations.of(context)!.currentAvgDensityValue(stats['occupancyPercentage']?.toString() ?? '0'),
                                   style: GoogleFonts.roboto(
                                     fontSize: 13,
                                     color: Colors.white54,
                                   ),
                                 ),
                                 Text(
-                                  'Above Recommended',
+                                  AppLocalizations.of(context)!.aboveRecommended,
                                   style: GoogleFonts.roboto(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w600,
@@ -844,15 +841,26 @@ class _MonitoringTab extends StatelessWidget {
                           Column(
                             children: [
                               _QuickActionBtn(
-                                label: 'Report...',
+                                label: AppLocalizations.of(context)!.reportButtonShort,
                                 color: AppColors.red,
-                                onTap: () {},
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => const ReportIncidentScreen(),
+                                    ),
+                                  );
+                                },
                               ),
                               const SizedBox(height: 8),
                               _QuickActionBtn(
-                                label: 'View A...',
+                                label: AppLocalizations.of(context)!.viewAlertsShort,
                                 color: AppColors.blue,
-                                onTap: () {},
+                                onTap: () {
+                                  // Navigate to alerts - find parent SecurityDashboard state
+                                  final state = context.findAncestorStateOfType<_SecurityDashboardState>();
+                                  state?._onItemTapped(2);
+                                },
                               ),
                             ],
                           ),
@@ -985,7 +993,7 @@ class _AlertsTab extends StatelessWidget {
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
                     child: Text(
-                      'Alerts',
+                      AppLocalizations.of(context)!.alertsTab,
                       style: GoogleFonts.montserrat(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
@@ -1005,7 +1013,7 @@ class _AlertsTab extends StatelessWidget {
                         Icon(Icons.notifications_off_outlined, size: 64, color: Colors.white24),
                         const SizedBox(height: 16),
                         Text(
-                          'No active alerts',
+                          AppLocalizations.of(context)!.noActiveAlerts,
                           style: GoogleFonts.roboto(fontSize: 16, color: Colors.white54),
                         ),
                       ],
@@ -1025,7 +1033,7 @@ class _AlertsTab extends StatelessWidget {
                             title: alert.typeDisplayName,
                             subtitle: alert.message,
                             severity: alert.severity,
-                            onTap: () {},
+                            onTap: () => _showAlertDetail(context, alert),
                           ),
                         );
                       },
@@ -1039,6 +1047,131 @@ class _AlertsTab extends StatelessWidget {
       ),
     );
   }
+}
+
+class _AlertDetailSheet extends StatelessWidget {
+  final dynamic alert;
+
+  const _AlertDetailSheet({required this.alert});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: AppColors.coolSteelBlue,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 40, height: 4,
+              decoration: BoxDecoration(
+                color: Colors.white24,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+          Text(
+            alert.typeDisplayName,
+            style: GoogleFonts.montserrat(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            alert.message,
+            style: GoogleFonts.roboto(
+              fontSize: 14,
+              color: Colors.white70,
+              height: 1.5,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: _getSeverityColor(alert.severity).withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  alert.severity.toUpperCase(),
+                  style: GoogleFonts.roboto(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: _getSeverityColor(alert.severity),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Created by ${alert.createdByName}',
+                style: GoogleFonts.roboto(fontSize: 12, color: Colors.white54),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: ElevatedButton(
+              onPressed: () async {
+                Navigator.pop(context);
+                final alertProvider = Provider.of<AlertProvider>(context, listen: false);
+                await alertProvider.resolveAlert(alert.id);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(AppLocalizations.of(context)!.alertResolvedSnack),
+                      backgroundColor: AppColors.green,
+                    ),
+                  );
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.green,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                elevation: 0,
+              ),
+              child: Text(
+                'Mark Resolved',
+                style: GoogleFonts.roboto(fontSize: 16, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+        ],
+      ),
+    );
+  }
+
+  Color _getSeverityColor(String severity) {
+    switch (severity.toLowerCase()) {
+      case 'critical': return AppColors.red;
+      case 'high': return AppColors.orange;
+      case 'medium':
+      case 'warning': return AppColors.yellow;
+      default: return AppColors.blue;
+    }
+  }
+}
+
+void _showAlertDetail(BuildContext context, dynamic alert) {
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: Colors.transparent,
+    isScrollControlled: true,
+    builder: (context) => _AlertDetailSheet(alert: alert),
+  );
 }
 
 class _ProfileTab extends StatelessWidget {
@@ -1158,6 +1291,39 @@ class _ProfileTab extends StatelessWidget {
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
                               ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+
+                        // Settings Button (Teal)
+                        SizedBox(
+                          width: double.infinity,
+                          height: 52,
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const SettingsScreen(),
+                                ),
+                              );
+                            },
+                            icon: const Icon(Icons.settings_outlined),
+                            label: Text(
+                              'Settings & Language',
+                              style: GoogleFonts.roboto(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.softTealBlue,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              elevation: 0,
                             ),
                           ),
                         ),

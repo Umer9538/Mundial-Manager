@@ -6,6 +6,9 @@ class CrowdDensity {
   final double densityPerSqMeter; // people per m²
   final String status; // safe, moderate, high, critical
   final DateTime lastUpdated;
+  final double? temperature; // from dataset
+  final String? weatherCondition; // from dataset
+  final String? healthRisk; // dominant health risk from dataset
 
   CrowdDensity({
     required this.zoneId,
@@ -15,17 +18,25 @@ class CrowdDensity {
     required this.densityPerSqMeter,
     required this.status,
     required this.lastUpdated,
+    this.temperature,
+    this.weatherCondition,
+    this.healthRisk,
   });
 
   factory CrowdDensity.fromJson(Map<String, dynamic> json) {
     return CrowdDensity(
       zoneId: json['zoneId'] as String,
       zoneName: json['zoneName'] as String,
-      currentPopulation: json['currentPopulation'] as int,
+      currentPopulation: (json['currentPopulation'] ?? json['currentCount'] ?? 0) as int,
       capacity: json['capacity'] as int,
       densityPerSqMeter: (json['densityPerSqMeter'] as num).toDouble(),
       status: json['status'] as String,
-      lastUpdated: DateTime.parse(json['lastUpdated'] as String),
+      lastUpdated: json['lastUpdated'] != null
+          ? DateTime.parse(json['lastUpdated'] as String)
+          : DateTime.now(),
+      temperature: json['temperature'] != null ? (json['temperature'] as num).toDouble() : null,
+      weatherCondition: json['weatherCondition'] as String?,
+      healthRisk: json['healthRisk'] as String?,
     );
   }
 
@@ -38,6 +49,9 @@ class CrowdDensity {
       'densityPerSqMeter': densityPerSqMeter,
       'status': status,
       'lastUpdated': lastUpdated.toIso8601String(),
+      if (temperature != null) 'temperature': temperature,
+      if (weatherCondition != null) 'weatherCondition': weatherCondition,
+      if (healthRisk != null) 'healthRisk': healthRisk,
     };
   }
 
@@ -50,6 +64,9 @@ class CrowdDensity {
     double? densityPerSqMeter,
     String? status,
     DateTime? lastUpdated,
+    double? temperature,
+    String? weatherCondition,
+    String? healthRisk,
   }) {
     return CrowdDensity(
       zoneId: zoneId ?? this.zoneId,
@@ -59,6 +76,9 @@ class CrowdDensity {
       densityPerSqMeter: densityPerSqMeter ?? this.densityPerSqMeter,
       status: status ?? this.status,
       lastUpdated: lastUpdated ?? this.lastUpdated,
+      temperature: temperature ?? this.temperature,
+      weatherCondition: weatherCondition ?? this.weatherCondition,
+      healthRisk: healthRisk ?? this.healthRisk,
     );
   }
 
@@ -111,6 +131,20 @@ class CrowdDensity {
     }
   }
 
+  // Get status from occupancy percentage (dataset-derived thresholds).
+  // 50% -> moderate, 70% -> high, 85% -> critical, 95% -> emergency
+  static String getStatusFromOccupancy(double occupancyPercent) {
+    if (occupancyPercent >= 85) {
+      return 'critical';
+    } else if (occupancyPercent >= 70) {
+      return 'high';
+    } else if (occupancyPercent >= 50) {
+      return 'moderate';
+    } else {
+      return 'safe';
+    }
+  }
+
   // Create CrowdDensity from zone data
   factory CrowdDensity.fromZoneData({
     required String zoneId,
@@ -118,9 +152,13 @@ class CrowdDensity {
     required int currentPopulation,
     required int capacity,
     required double areaInSqMeters,
+    double? temperature,
+    String? weatherCondition,
   }) {
     final densityPerSqMeter = currentPopulation / areaInSqMeters;
-    final status = getStatusFromDensity(densityPerSqMeter);
+    final occupancy = capacity > 0 ? (currentPopulation / capacity * 100) : 0.0;
+    // Use occupancy-based status (dataset-derived thresholds)
+    final status = getStatusFromOccupancy(occupancy);
 
     return CrowdDensity(
       zoneId: zoneId,
@@ -130,16 +168,26 @@ class CrowdDensity {
       densityPerSqMeter: densityPerSqMeter,
       status: status,
       lastUpdated: DateTime.now(),
+      temperature: temperature,
+      weatherCondition: weatherCondition,
     );
   }
 
-  // Simulate random density fluctuation (for demo)
-  CrowdDensity simulateFluctuation() {
-    // Random fluctuation between -5% and +5%
-    final fluctuation = (0.9 + (0.2 * (DateTime.now().millisecond % 100) / 100));
-    final newPopulation = (currentPopulation * fluctuation).round().clamp(0, capacity);
-    final newDensity = newPopulation / (capacity * 0.5); // Assume 0.5 m² per capacity
-    final newStatus = getStatusFromDensity(newDensity);
+  // Simulate density fluctuation using dataset-driven occupancy logic.
+  // Called by CrowdProvider when DatasetService provides new occupancy values.
+  CrowdDensity simulateFluctuation({double? newOccupancyPercent}) {
+    double occupancy;
+    if (newOccupancyPercent != null) {
+      occupancy = newOccupancyPercent;
+    } else {
+      // Fallback: small random fluctuation
+      final fluctuation = (0.9 + (0.2 * (DateTime.now().millisecond % 100) / 100));
+      occupancy = (currentPopulation * fluctuation / capacity * 100).clamp(5.0, 100.0);
+    }
+
+    final newPopulation = (capacity * occupancy / 100).round().clamp(0, capacity);
+    final newDensity = newPopulation / (capacity * 0.5); // 0.5 m² per capacity unit
+    final newStatus = getStatusFromOccupancy(occupancy);
 
     return CrowdDensity(
       zoneId: zoneId,
@@ -149,6 +197,9 @@ class CrowdDensity {
       densityPerSqMeter: newDensity,
       status: newStatus,
       lastUpdated: DateTime.now(),
+      temperature: temperature,
+      weatherCondition: weatherCondition,
+      healthRisk: healthRisk,
     );
   }
 }

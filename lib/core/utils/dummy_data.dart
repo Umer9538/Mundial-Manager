@@ -12,8 +12,8 @@ class DummyData {
   static const _uuid = Uuid();
 
   // King Fahd International Stadium, Riyadh, Saudi Arabia
-  static const double stadiumLat = 24.7257;
-  static const double stadiumLng = 46.8222;
+  static const double stadiumLat = 24.7133;
+  static const double stadiumLng = 46.8253;
 
   // ========== USERS ==========
   static final List<User> users = [

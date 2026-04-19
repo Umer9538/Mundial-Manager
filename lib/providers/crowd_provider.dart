@@ -4,12 +4,16 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/crowd_density.dart';
 import '../models/zone.dart';
 import '../services/database_service.dart';
+import '../services/dataset_service.dart';
+import '../services/auto_alert_service.dart';
+import '../providers/alert_provider.dart';
 import '../core/config/environment.dart';
-import '../core/utils/dummy_data.dart';
 
 class CrowdProvider with ChangeNotifier {
   final DatabaseService _databaseService = DatabaseService();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final DatasetService _datasetService = DatasetService.instance;
+  AutoAlertService? _autoAlertService;
 
   List<CrowdDensity> _crowdData = [];
   List<Zone> _zones = [];
@@ -19,12 +23,19 @@ class CrowdProvider with ChangeNotifier {
   StreamSubscription<QuerySnapshot>? _crowdSubscription;
   StreamSubscription<QuerySnapshot>? _zonesSubscription;
   String? _currentEventId;
+  bool _datasetReady = false;
 
   List<CrowdDensity> get crowdData => _crowdData;
   List<Zone> get allZones => _zones;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   DateTime? get lastUpdated => _lastUpdated;
+
+  /// Connect the AlertProvider to enable automatic density-based alerts.
+  /// Call this once after both providers are available (e.g., in a dashboard).
+  void connectAlertProvider(AlertProvider alertProvider) {
+    _autoAlertService ??= AutoAlertService(alertProvider);
+  }
 
   // Get crowd data for specific zone
   CrowdDensity? getZoneDensity(String zoneId) {
@@ -92,7 +103,7 @@ class CrowdProvider with ChangeNotifier {
     };
   }
 
-  // Initialize crowd data
+  // Initialize crowd data and dataset
   Future<void> initialize({String? eventId}) async {
     _isLoading = true;
     _errorMessage = null;
@@ -101,26 +112,25 @@ class CrowdProvider with ChangeNotifier {
     try {
       _currentEventId = eventId;
 
+      // Load the Kaggle dataset for simulation
+      if (!_datasetReady) {
+        await _datasetService.initialize();
+        _datasetReady = _datasetService.isLoaded;
+        if (_datasetReady) {
+          debugPrint('Dataset ready: ${_datasetService.statistics['totalRecords']} records');
+        }
+      }
+
       // Try to load from Firestore first
       if (eventId != null) {
         await _loadZonesFromFirestore();
         await _loadCrowdDataFromFirestore(eventId);
       }
 
-      // Fallback to dummy data only in development mode
-      if (_crowdData.isEmpty && AppConfig.useDummyDataFallback) {
-        _crowdData = DummyData.crowdDensityData;
-        _zones = DummyData.zones;
-      }
-
       _lastUpdated = DateTime.now();
     } catch (e) {
       _errorMessage = 'Failed to load crowd data';
       debugPrint('Error initializing crowd data: $e');
-      if (AppConfig.useDummyDataFallback) {
-        _crowdData = DummyData.crowdDensityData;
-        _zones = DummyData.zones;
-      }
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -195,7 +205,7 @@ class CrowdProvider with ChangeNotifier {
     }
   }
 
-  // Process crowd density snapshot
+  // Process crowd density snapshot and evaluate auto-alerts
   void _processCrowdSnapshot(QuerySnapshot snapshot) {
     final Map<String, CrowdDensity> latestByZone = {};
 
@@ -213,6 +223,10 @@ class CrowdProvider with ChangeNotifier {
       _crowdData = latestByZone.values.toList();
       _lastUpdated = DateTime.now();
       _errorMessage = null;
+
+      // Evaluate auto-alerts for each zone
+      _evaluateAutoAlerts();
+
       notifyListeners();
     }
   }
@@ -241,11 +255,48 @@ class CrowdProvider with ChangeNotifier {
     );
   }
 
-  // Simulate crowd density update
+  // Simulate crowd density update using dataset-driven occupancy logic
   void _simulateUpdate() {
-    _crowdData = _crowdData.map((cd) => cd.simulateFluctuation()).toList();
+    _crowdData = _crowdData.map((cd) {
+      if (_datasetReady) {
+        // Use dataset to compute realistic occupancy change
+        final currentOccupancy = cd.occupancyPercentage;
+        final newOccupancy = _datasetService.simulateOccupancyChange(currentOccupancy);
+
+        // Get environment data from dataset
+        String densityLevel;
+        if (newOccupancy >= 75) {
+          densityLevel = 'High';
+        } else if (newOccupancy >= 50) {
+          densityLevel = 'Medium';
+        } else {
+          densityLevel = 'Low';
+        }
+        final envData = _datasetService.getEnvironmentData(densityLevel);
+
+        return cd.simulateFluctuation(newOccupancyPercent: newOccupancy).copyWith(
+          temperature: envData['temperature'] as double?,
+          weatherCondition: envData['weather'] as String?,
+        );
+      } else {
+        return cd.simulateFluctuation();
+      }
+    }).toList();
+
     _lastUpdated = DateTime.now();
+
+    // Evaluate auto-alerts after simulation update
+    _evaluateAutoAlerts();
+
     notifyListeners();
+  }
+
+  // Run auto-alert evaluation for all zones
+  void _evaluateAutoAlerts() {
+    if (_autoAlertService == null || _currentEventId == null) return;
+    for (final cd in _crowdData) {
+      _autoAlertService!.evaluateZone(cd, _currentEventId!);
+    }
   }
 
   // Stop real-time updates
@@ -268,10 +319,6 @@ class CrowdProvider with ChangeNotifier {
         await _loadCrowdDataFromFirestore(_currentEventId!);
       }
 
-      if (_crowdData.isEmpty && AppConfig.useDummyDataFallback) {
-        _crowdData = DummyData.crowdDensityData;
-      }
-
       _lastUpdated = DateTime.now();
       _errorMessage = null;
     } catch (e) {
@@ -288,9 +335,6 @@ class CrowdProvider with ChangeNotifier {
     try {
       return _zones.firstWhere((z) => z.id == zoneId);
     } catch (e) {
-      if (AppConfig.useDummyDataFallback) {
-        return DummyData.getZoneById(zoneId);
-      }
       return null;
     }
   }

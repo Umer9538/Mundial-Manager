@@ -7,6 +7,7 @@ import '../../providers/auth_provider.dart';
 import '../../widgets/common/gradient_scaffold.dart';
 import '../../widgets/common/glass_card.dart';
 import '../../widgets/common/profile_dialogs.dart';
+import '../../l10n/app_localizations.dart';
 import 'settings_screen.dart';
 
 class FanProfileScreen extends StatelessWidget {
@@ -14,6 +15,8 @@ class FanProfileScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
     return GradientScaffold(
       body: Consumer<AuthProvider>(
         builder: (context, authProvider, _) {
@@ -29,7 +32,7 @@ class FanProfileScreen extends StatelessWidget {
 
                   // Title
                   Text(
-                    'My Profile',
+                    l10n.myProfile,
                     style: GoogleFonts.montserrat(
                       fontSize: 22,
                       fontWeight: FontWeight.bold,
@@ -109,7 +112,7 @@ class FanProfileScreen extends StatelessWidget {
                               elevation: 0,
                             ),
                             child: Text(
-                              'Edit Profile',
+                              l10n.editProfile,
                               style: GoogleFonts.roboto(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
@@ -133,7 +136,7 @@ class FanProfileScreen extends StatelessWidget {
                               ),
                             ),
                             child: Text(
-                              'Change Password',
+                              l10n.changePassword,
                               style: GoogleFonts.roboto(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
@@ -158,7 +161,7 @@ class FanProfileScreen extends StatelessWidget {
                             },
                             icon: const Icon(Icons.settings_outlined, size: 20),
                             label: Text(
-                              'Settings',
+                              l10n.settingsTitle,
                               style: GoogleFonts.roboto(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
@@ -193,7 +196,7 @@ class FanProfileScreen extends StatelessWidget {
                               elevation: 0,
                             ),
                             child: Text(
-                              'Logout',
+                              l10n.logoutButton,
                               style: GoogleFonts.roboto(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,

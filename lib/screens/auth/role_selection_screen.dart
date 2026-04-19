@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/constants.dart';
 import '../../core/theme/app_colors.dart';
+import '../../l10n/app_localizations.dart';
 
 class RoleSelectionScreen extends StatefulWidget {
   const RoleSelectionScreen({super.key});
@@ -12,42 +13,47 @@ class RoleSelectionScreen extends StatefulWidget {
 class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
   String? _selectedRole;
 
-  final List<RoleOption> _roles = [
-    RoleOption(
-      role: AppConstants.roleFan,
-      title: 'Fan',
-      description: 'View venue maps, receive safety alerts, and navigate efficiently',
-      icon: Icons.person,
-      color: AppColors.info,
-    ),
-    RoleOption(
-      role: AppConstants.roleOrganizer,
-      title: 'Event Organizer',
-      description: 'Monitor crowds, send alerts, manage staff, and view analytics',
-      icon: Icons.manage_accounts,
-      color: AppColors.primary,
-    ),
-    RoleOption(
-      role: AppConstants.roleSecurity,
-      title: 'Security Team',
-      description: 'Report incidents, monitor zones, and coordinate responses',
-      icon: Icons.security,
-      color: AppColors.warning,
-    ),
-    RoleOption(
-      role: AppConstants.roleEmergency,
-      title: 'Emergency Services',
-      description: 'View incident locations, update response status, and communicate',
-      icon: Icons.medical_services,
-      color: AppColors.error,
-    ),
-  ];
+  List<RoleOption> _getRoles(AppLocalizations l) {
+    return [
+      RoleOption(
+        role: AppConstants.roleFan,
+        title: l.roleFan,
+        description: l.roleFanDesc,
+        icon: Icons.person,
+        color: AppColors.info,
+      ),
+      RoleOption(
+        role: AppConstants.roleOrganizer,
+        title: l.roleOrganizer,
+        description: l.roleOrganizerDesc,
+        icon: Icons.manage_accounts,
+        color: AppColors.primary,
+      ),
+      RoleOption(
+        role: AppConstants.roleSecurity,
+        title: l.roleSecurity,
+        description: l.roleSecurityDesc,
+        icon: Icons.security,
+        color: AppColors.warning,
+      ),
+      RoleOption(
+        role: AppConstants.roleEmergency,
+        title: l.roleEmergency,
+        description: l.roleEmergencyDesc,
+        icon: Icons.medical_services,
+        color: AppColors.error,
+      ),
+    ];
+  }
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final roles = _getRoles(l);
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Select Your Role'),
+        title: Text(l.selectYourRole),
       ),
       body: SafeArea(
         child: Column(
@@ -64,13 +70,13 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'Choose Your Role',
+                    l.chooseYourRole,
                     style: Theme.of(context).textTheme.headlineMedium,
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Select the role that best describes your access level',
+                    l.selectRoleDescription,
                     style: Theme.of(context).textTheme.bodyMedium,
                     textAlign: TextAlign.center,
                   ),
@@ -82,9 +88,9 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
             Expanded(
               child: ListView.builder(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                itemCount: _roles.length,
+                itemCount: roles.length,
                 itemBuilder: (context, index) {
-                  final roleOption = _roles[index];
+                  final roleOption = roles[index];
                   final isSelected = _selectedRole == roleOption.role;
 
                   return GestureDetector(
@@ -181,7 +187,7 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                     Navigator.of(context).pop(_selectedRole);
                   }
                       : null,
-                  child: const Text('Continue'),
+                  child: Text(l.continueButton),
                 ),
               ),
             ),

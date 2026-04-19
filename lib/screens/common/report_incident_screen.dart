@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:latlong2/latlong.dart';
+import '../../l10n/app_localizations.dart';
 import '../../core/theme/app_colors.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/incident_provider.dart';
@@ -27,19 +28,19 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
   bool _isSubmitting = false;
   final _imagePicker = ImagePicker();
 
-  final List<Map<String, dynamic>> _incidentTypes = [
-    {'value': 'medical', 'label': 'Medical', 'icon': Icons.medical_services},
-    {'value': 'security', 'label': 'Security', 'icon': Icons.security},
-    {'value': 'overcrowding', 'label': 'Overcrowding', 'icon': Icons.groups},
-    {'value': 'facility', 'label': 'Facility', 'icon': Icons.build},
-    {'value': 'other', 'label': 'Other', 'icon': Icons.report},
+  List<Map<String, dynamic>> _incidentTypes(AppLocalizations l) => [
+    {'value': 'medical', 'label': l.medicalType, 'icon': Icons.medical_services},
+    {'value': 'security', 'label': l.securityType, 'icon': Icons.security},
+    {'value': 'overcrowding', 'label': l.overcrowdingType, 'icon': Icons.groups},
+    {'value': 'facility', 'label': l.facilityType, 'icon': Icons.build},
+    {'value': 'other', 'label': l.otherType, 'icon': Icons.report},
   ];
 
-  final List<Map<String, dynamic>> _severityLevels = [
-    {'value': 'low', 'label': 'Low', 'color': AppColors.green},
-    {'value': 'medium', 'label': 'Medium', 'color': AppColors.yellow},
-    {'value': 'high', 'label': 'High', 'color': AppColors.orange},
-    {'value': 'critical', 'label': 'Critical', 'color': AppColors.red},
+  List<Map<String, dynamic>> _severityLevels(AppLocalizations l) => [
+    {'value': 'low', 'label': l.lowSeverity, 'color': AppColors.green},
+    {'value': 'medium', 'label': l.mediumSeverity, 'color': AppColors.yellow},
+    {'value': 'high', 'label': l.highSeverity, 'color': AppColors.orange},
+    {'value': 'critical', 'label': l.criticalSeverity, 'color': AppColors.red},
   ];
 
   @override
@@ -63,7 +64,7 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to pick image: $e'),
+            content: Text(AppLocalizations.of(context)!.failedPickImage),
             backgroundColor: Colors.red,
           ),
         );
@@ -86,7 +87,7 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
             children: [
               ListTile(
                 leading: const Icon(Icons.camera_alt, color: Colors.white70),
-                title: Text('Camera', style: GoogleFonts.roboto(color: Colors.white)),
+                title: Text(AppLocalizations.of(context)!.cameraOption, style: GoogleFonts.roboto(color: Colors.white)),
                 onTap: () {
                   Navigator.pop(context);
                   _pickImage(ImageSource.camera);
@@ -94,7 +95,7 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
               ),
               ListTile(
                 leading: const Icon(Icons.photo_library, color: Colors.white70),
-                title: Text('Gallery', style: GoogleFonts.roboto(color: Colors.white)),
+                title: Text(AppLocalizations.of(context)!.galleryOption, style: GoogleFonts.roboto(color: Colors.white)),
                 onTap: () {
                   Navigator.pop(context);
                   _pickImage(ImageSource.gallery);
@@ -110,8 +111,8 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
   Future<void> _submitReport() async {
     if (_descriptionController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please describe the incident'),
+        SnackBar(
+          content: Text(AppLocalizations.of(context)!.descriptionRequired),
           backgroundColor: Colors.red,
         ),
       );
@@ -142,7 +143,7 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
       final event = await dbService.getCurrentActiveEvent();
 
       // Load venue location for incident coordinates
-      LatLng incidentLocation = const LatLng(24.7136, 46.6753); // fallback
+      LatLng incidentLocation = const LatLng(24.7133, 46.8253); // King Fahd Stadium
       if (event != null) {
         final venue = await dbService.getVenueById(event.venueId);
         if (venue != null) {
@@ -165,15 +166,15 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
         if (success) {
           Navigator.pop(context);
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Incident reported successfully'),
+            SnackBar(
+              content: Text(AppLocalizations.of(context)!.incidentReportSuccess),
               backgroundColor: Colors.green,
             ),
           );
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(incidentProvider.errorMessage ?? 'Failed to report incident'),
+              content: Text(incidentProvider.errorMessage ?? AppLocalizations.of(context)!.incidentReportFailed),
               backgroundColor: Colors.red,
             ),
           );
@@ -183,7 +184,7 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error: $e'),
+            content: Text(AppLocalizations.of(context)!.errorWithDetails(e.toString())),
             backgroundColor: Colors.red,
           ),
         );
@@ -217,7 +218,7 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
                   ),
                   const SizedBox(width: 16),
                   Text(
-                    'Report Incident',
+                    AppLocalizations.of(context)!.reportIncidentTitle,
                     style: GoogleFonts.montserrat(
                       fontSize: 22,
                       fontWeight: FontWeight.bold,
@@ -237,25 +238,25 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Incident Type
-                    _buildSectionLabel('Incident Type'),
+                    _buildSectionLabel(AppLocalizations.of(context)!.incidentTypeSection),
                     const SizedBox(height: 10),
                     _buildTypeSelector(),
                     const SizedBox(height: 24),
 
                     // Severity
-                    _buildSectionLabel('Severity Level'),
+                    _buildSectionLabel(AppLocalizations.of(context)!.severityLevelSection),
                     const SizedBox(height: 10),
                     _buildSeveritySelector(),
                     const SizedBox(height: 24),
 
                     // Description
-                    _buildSectionLabel('Description'),
+                    _buildSectionLabel(AppLocalizations.of(context)!.descriptionSection),
                     const SizedBox(height: 10),
                     _buildDescriptionField(),
                     const SizedBox(height: 24),
 
                     // Photos
-                    _buildSectionLabel('Photos (Optional)'),
+                    _buildSectionLabel(AppLocalizations.of(context)!.photosSection),
                     const SizedBox(height: 10),
                     _buildImageSection(),
                     const SizedBox(height: 32),
@@ -285,10 +286,11 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
   }
 
   Widget _buildTypeSelector() {
+    final l = AppLocalizations.of(context)!;
     return Wrap(
       spacing: 10,
       runSpacing: 10,
-      children: _incidentTypes.map((type) {
+      children: _incidentTypes(l).map((type) {
         final isSelected = _selectedType == type['value'];
         return GestureDetector(
           onTap: () => setState(() => _selectedType = type['value']),
@@ -330,8 +332,9 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
   }
 
   Widget _buildSeveritySelector() {
+    final l = AppLocalizations.of(context)!;
     return Row(
-      children: _severityLevels.map((level) {
+      children: _severityLevels(l).map((level) {
         final isSelected = _selectedSeverity == level['value'];
         final color = level['color'] as Color;
 
@@ -383,7 +386,7 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
       maxLines: 4,
       style: const TextStyle(color: Colors.white),
       decoration: InputDecoration(
-        hintText: 'Describe what happened...',
+        hintText: AppLocalizations.of(context)!.describeIncident,
         hintStyle: const TextStyle(color: Colors.white38),
         filled: true,
         fillColor: const Color(0xFF0D1B2A),
@@ -467,7 +470,7 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
                 const SizedBox(width: 10),
                 Text(
                   _images.isEmpty
-                      ? 'Add Photos'
+                      ? AppLocalizations.of(context)!.addPhotos
                       : '${_images.length}/3 photos added',
                   style: GoogleFonts.roboto(
                     fontSize: 14,
@@ -509,7 +512,7 @@ class _ReportIncidentScreenState extends State<ReportIncidentScreen> {
                   const Icon(Icons.warning_amber, color: Colors.white, size: 22),
                   const SizedBox(width: 10),
                   Text(
-                    'Submit Incident Report',
+                    AppLocalizations.of(context)!.submitReport,
                     style: GoogleFonts.roboto(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,

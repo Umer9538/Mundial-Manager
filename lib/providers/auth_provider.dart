@@ -327,9 +327,36 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  // Logout
+  // Logout - clears state immediately, runs cleanup in background
   Future<void> logout() async {
+    final role = _currentUser?.role;
+
+    // Clear state immediately so UI navigates to login instantly
+    _currentUser = null;
+    _errorMessage = null;
+    _needsEmailVerification = false;
+    _isLoading = false;
+    notifyListeners();
+
+    // Run slow cleanup in background (don't block the UI)
+    try {
+      if (role != null) {
+        _notificationService.unsubscribeFromAllTopics(role);
+      }
+      if (_locationService.isSharing) {
+        _locationService.stopSharing();
+      }
+      await _authService.signOut();
+      await _clearLocalSession();
+    } catch (e) {
+      debugPrint('Error during logout cleanup: $e');
+    }
+  }
+
+  // Delete user account
+  Future<bool> deleteAccount() async {
     _isLoading = true;
+    _errorMessage = null;
     notifyListeners();
 
     try {
@@ -338,22 +365,37 @@ class AuthProvider with ChangeNotifier {
             .unsubscribeFromAllTopics(_currentUser!.role);
       }
 
-      // Stop location sharing
       if (_locationService.isSharing) {
         await _locationService.stopSharing();
       }
 
-      await _authService.signOut();
-      await _clearLocalSession();
+      // Delete Firebase Auth account
+      final firebaseUser = firebase_auth.FirebaseAuth.instance.currentUser;
+      if (firebaseUser != null) {
+        await firebaseUser.delete();
+      }
 
+      await _clearLocalSession();
       _currentUser = null;
       _errorMessage = null;
-      _needsEmailVerification = false;
-    } catch (e) {
-      debugPrint('Error logging out: $e');
-    } finally {
       _isLoading = false;
       notifyListeners();
+      return true;
+    } on firebase_auth.FirebaseAuthException catch (e) {
+      if (e.code == 'requires-recent-login') {
+        _errorMessage = 'Please log out and log back in before deleting your account.';
+      } else {
+        _errorMessage = 'Failed to delete account: ${e.message}';
+      }
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    } catch (e) {
+      _errorMessage = 'Failed to delete account';
+      debugPrint('Error deleting account: $e');
+      _isLoading = false;
+      notifyListeners();
+      return false;
     }
   }
 
@@ -503,6 +545,12 @@ class AuthProvider with ChangeNotifier {
     await prefs.remove(AppConstants.keyUserName);
     await prefs.remove(AppConstants.keyUserRole);
     await prefs.remove(AppConstants.keyLastActiveTime);
+
+    // Clear remembered email if "Remember Me" was not set
+    final rememberMe = prefs.getBool(AppConstants.keyRememberMe) ?? false;
+    if (!rememberMe) {
+      await prefs.remove(AppConstants.keyRememberedEmail);
+    }
   }
 
   // Clear error message

@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Mundial - Feature Implementation Report</title>
+<style>
+  @page {
+    size: A4;
+    margin: 2cm 2.5cm;
+    @bottom-center { content: counter(page); font-size: 10px; color: #888; }
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    font-size: 11pt;
+    line-height: 1.6;
+    color: #1a1a2e;
+  }
+
+  /* ---- Cover Page ---- */
+  .cover {
+    page-break-after: always;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    min-height: 90vh;
+    text-align: center;
+  }
+  .cover .logo {
+    width: 100px; height: 100px;
+    background: linear-gradient(135deg, #0f253d, #1a5276);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 30px;
+    color: #5dade2; font-size: 48px;
+  }
+  .cover h1 { font-size: 42pt; color: #0f253d; margin-bottom: 8px; }
+  .cover .subtitle { font-size: 14pt; color: #5dade2; letter-spacing: 4px; text-transform: uppercase; margin-bottom: 30px; }
+  .cover .tagline { font-size: 12pt; color: #666; margin-bottom: 50px; }
+  .cover .meta { font-size: 10pt; color: #999; line-height: 2; }
+
+  /* ---- TOC ---- */
+  .toc { page-break-after: always; }
+  .toc h2 { font-size: 20pt; color: #0f253d; margin-bottom: 20px; border-bottom: 2px solid #5dade2; padding-bottom: 8px; }
+  .toc ul { list-style: none; }
+  .toc li { padding: 6px 0; border-bottom: 1px dotted #ddd; font-size: 11pt; }
+  .toc li a { text-decoration: none; color: #1a1a2e; }
+  .toc li .num { color: #5dade2; font-weight: bold; margin-right: 8px; }
+  .toc li .pg { float: right; color: #999; }
+  .toc .sub { padding-left: 24px; font-size: 10pt; }
+
+  /* ---- Section Headers ---- */
+  h2 {
+    font-size: 18pt;
+    color: #0f253d;
+    margin-top: 30px;
+    margin-bottom: 12px;
+    padding-bottom: 6px;
+    border-bottom: 2px solid #5dade2;
+    page-break-after: avoid;
+  }
+  h3 {
+    font-size: 13pt;
+    color: #1a5276;
+    margin-top: 22px;
+    margin-bottom: 8px;
+    page-break-after: avoid;
+  }
+  h4 {
+    font-size: 11pt;
+    color: #5dade2;
+    margin-top: 14px;
+    margin-bottom: 6px;
+  }
+
+  p { margin-bottom: 8px; }
+
+  /* ---- Role Badges ---- */
+  .role-badge {
+    display: inline-block;
+    padding: 3px 12px;
+    border-radius: 12px;
+    font-size: 9pt;
+    font-weight: bold;
+    color: white;
+    margin-right: 6px;
+  }
+  .badge-fan { background: #2196F3; }
+  .badge-organizer { background: #9C27B0; }
+  .badge-security { background: #FF9800; }
+  .badge-emergency { background: #F44336; }
+
+  /* ---- Feature Card ---- */
+  .feature-card {
+    background: #f8f9fa;
+    border-left: 4px solid #5dade2;
+    padding: 12px 16px;
+    margin: 10px 0;
+    border-radius: 0 8px 8px 0;
+  }
+  .feature-card .title { font-weight: bold; color: #0f253d; margin-bottom: 4px; }
+  .feature-card .file { font-size: 9pt; color: #888; font-family: 'Courier New', monospace; }
+
+  /* ---- Code Block ---- */
+  pre {
+    background: #0f253d;
+    color: #e8e8e8;
+    padding: 14px 18px;
+    border-radius: 8px;
+    font-size: 8.5pt;
+    line-height: 1.5;
+    overflow-wrap: break-word;
+    white-space: pre-wrap;
+    margin: 10px 0 16px 0;
+    page-break-inside: avoid;
+    font-family: 'Courier New', Courier, monospace;
+  }
+  pre .kw { color: #c792ea; }
+  pre .fn { color: #82aaff; }
+  pre .st { color: #c3e88d; }
+  pre .cm { color: #546e7a; }
+  pre .tp { color: #ffcb6b; }
+
+  /* ---- Table ---- */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0 20px 0;
+    font-size: 10pt;
+  }
+  th {
+    background: #0f253d;
+    color: white;
+    padding: 8px 12px;
+    text-align: left;
+    font-size: 9pt;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  td { padding: 8px 12px; border-bottom: 1px solid #e0e0e0; }
+  tr:nth-child(even) td { background: #f8f9fa; }
+
+  /* ---- Screenshot Placeholder ---- */
+  .screenshot {
+    border: 2px dashed #ccc;
+    border-radius: 12px;
+    padding: 30px;
+    text-align: center;
+    color: #999;
+    margin: 12px 0;
+    background: #fafafa;
+    font-size: 10pt;
+  }
+
+  /* ---- Architecture Diagram ---- */
+  .arch-box {
+    display: inline-block;
+    background: #0f253d;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 10pt;
+    font-weight: bold;
+    margin: 4px 8px;
+    text-align: center;
+  }
+  .arch-arrow { display: inline-block; font-size: 18pt; color: #5dade2; margin: 0 4px; vertical-align: middle; }
+  .arch-row { text-align: center; margin: 16px 0; }
+
+  /* ---- Utilities ---- */
+  .page-break { page-break-before: always; }
+  .muted { color: #888; font-size: 9pt; }
+  .highlight { background: #fff3cd; padding: 2px 6px; border-radius: 3px; }
+  .center { text-align: center; }
+  code { background: #eef; padding: 1px 5px; border-radius: 3px; font-size: 9.5pt; font-family: 'Courier New', monospace; color: #c0392b; }
+</style>
+</head>
+<body>
+
+<!-- ==================== COVER PAGE ==================== -->
+<div class="cover">
+  <div class="logo">⚽</div>
+  <h1>Mundial</h1>
+  <div class="subtitle">Manager</div>
+  <div class="tagline">Crowd Management System for FIFA World Cup 2026</div>
+  <div class="meta">
+    <strong>Feature Implementation Report</strong><br>
+    Flutter + Firebase + Provider Architecture<br><br>
+    Platform: Android &amp; iOS<br>
+    Version: 1.0.0
+  </div>
+</div>
+
+<!-- ==================== TABLE OF CONTENTS ==================== -->
+<div class="toc">
+  <h2>Table of Contents</h2>
+  <ul>
+    <li><span class="num">1</span> System Architecture</li>
+    <li><span class="num">2</span> Authentication System</li>
+    <li class="sub"><span class="num">2.1</span> Login with Email &amp; Password</li>
+    <li class="sub"><span class="num">2.2</span> User Registration with Role Selection</li>
+    <li class="sub"><span class="num">2.3</span> Password Reset</li>
+    <li><span class="num">3</span> Fan Dashboard</li>
+    <li class="sub"><span class="num">3.1</span> View Venue Map</li>
+    <li class="sub"><span class="num">3.2</span> Receive Live Alerts</li>
+    <li class="sub"><span class="num">3.3</span> Share Location</li>
+    <li class="sub"><span class="num">3.4</span> Report Incident</li>
+    <li><span class="num">4</span> Security Team Dashboard</li>
+    <li class="sub"><span class="num">4.1</span> Receive &amp; Respond to Alerts</li>
+    <li class="sub"><span class="num">4.2</span> Report Incidents</li>
+    <li class="sub"><span class="num">4.3</span> Monitor Crowd Density</li>
+    <li><span class="num">5</span> Emergency Services Dashboard</li>
+    <li class="sub"><span class="num">5.1</span> View Incident Locations on Map</li>
+    <li class="sub"><span class="num">5.2</span> Update Response Status</li>
+    <li class="sub"><span class="num">5.3</span> Communicate with Organizers</li>
+    <li><span class="num">6</span> Event Organizer Dashboard</li>
+    <li class="sub"><span class="num">6.1</span> View Crowd Movement</li>
+    <li class="sub"><span class="num">6.2</span> Send Safety Alerts</li>
+    <li class="sub"><span class="num">6.3</span> View Analytics &amp; Reports</li>
+    <li class="sub"><span class="num">6.4</span> Manage Roles &amp; Zones</li>
+    <li><span class="num">7</span> Demo Accounts</li>
+  </ul>
+</div>
+
+<!-- ==================== 1. ARCHITECTURE ==================== -->
+<h2>1. System Architecture</h2>
+
+<p>Mundial uses a <strong>3-layer architecture</strong> with the Provider pattern for state management:</p>
+
+<div class="arch-row">
+  <div class="arch-box">UI Screens<br><span style="font-size:8pt;font-weight:normal">StatefulWidget</span></div>
+  <span class="arch-arrow">→</span>
+  <div class="arch-box">Providers<br><span style="font-size:8pt;font-weight:normal">ChangeNotifier</span></div>
+  <span class="arch-arrow">→</span>
+  <div class="arch-box">Firebase<br><span style="font-size:8pt;font-weight:normal">Auth + Firestore</span></div>
+</div>
+
+<h3>State Management Providers</h3>
+<table>
+  <tr><th>Provider</th><th>Responsibility</th><th>Firestore Collections</th></tr>
+  <tr><td><code>AuthProvider</code></td><td>Login, Register, Logout, Location Sharing</td><td>users</td></tr>
+  <tr><td><code>CrowdProvider</code></td><td>Zone data, Crowd density, Real-time heatmap</td><td>zones, crowd_density</td></tr>
+  <tr><td><code>IncidentProvider</code></td><td>Report &amp; view incidents, Update status</td><td>incidents</td></tr>
+  <tr><td><code>AlertProvider</code></td><td>Send, Receive, Resolve safety alerts</td><td>alerts</td></tr>
+  <tr><td><code>StaffProvider</code></td><td>Staff assignment to zones</td><td>staff_assignments, users</td></tr>
+  <tr><td><code>AnalyticsProvider</code></td><td>Charts, Reports, Statistics</td><td>events, incidents, crowd_density</td></tr>
+  <tr><td><code>MessageProvider</code></td><td>Real-time messaging channels</td><td>messages</td></tr>
+</table>
+
+<h3>Technology Stack</h3>
+<table>
+  <tr><th>Layer</th><th>Technology</th></tr>
+  <tr><td>Frontend</td><td>Flutter (Dart) — cross-platform Android &amp; iOS</td></tr>
+  <tr><td>State Management</td><td>Provider with ChangeNotifier pattern</td></tr>
+  <tr><td>Authentication</td><td>Firebase Authentication (email/password)</td></tr>
+  <tr><td>Database</td><td>Cloud Firestore (NoSQL, real-time streams)</td></tr>
+  <tr><td>Storage</td><td>Firebase Storage (incident images)</td></tr>
+  <tr><td>Push Notifications</td><td>Firebase Cloud Messaging (FCM)</td></tr>
+  <tr><td>Maps</td><td>flutter_map + OpenStreetMap tiles + LatLng2</td></tr>
+  <tr><td>Charts</td><td>fl_chart library</td></tr>
+  <tr><td>Local Storage</td><td>SharedPreferences (settings, session)</td></tr>
+</table>
+
+<!-- ==================== 2. AUTHENTICATION ==================== -->
+<div class="page-break"></div>
+<h2>2. Authentication System</h2>
+
+<p>The auth system supports 4 user roles with email verification, login lockout after 5 failed attempts, session timeout, and Remember Me functionality.</p>
+
+<h3>2.1 Login with Email &amp; Password</h3>
+<div class="feature-card">
+  <div class="title">Login Screen</div>
+  <div class="file">lib/screens/auth/login_screen.dart → lib/providers/auth_provider.dart → lib/services/auth_service.dart</div>
+</div>
+
+<div class="screenshot">📱 Screenshot: Login Screen with email field, password field, Remember Me checkbox, Forgot Password link, Login button, and social login buttons</div>
+
+<pre><span class="cm">// login_screen.dart — Handles login with validation &amp; routing</span>
+<span class="kw">Future</span>&lt;<span class="kw">void</span>&gt; <span class="fn">_handleLogin</span>() <span class="kw">async</span> {
+  <span class="kw">if</span> (!_formKey.currentState!.validate()) <span class="kw">return</span>;
+
+  <span class="kw">final</span> authProvider = Provider.of&lt;<span class="tp">AuthProvider</span>&gt;(context, listen: <span class="kw">false</span>);
+
+  <span class="kw">final</span> success = <span class="kw">await</span> authProvider.<span class="fn">login</span>(
+    _emailController.text.trim(),
+    _passwordController.text,
+  );
+
+  <span class="kw">if</span> (success) {
+    <span class="cm">// Save remembered email if checkbox is checked</span>
+    <span class="kw">if</span> (_rememberMe) {
+      <span class="kw">await</span> prefs.setBool(AppConstants.keyRememberMe, <span class="kw">true</span>);
+      <span class="kw">await</span> prefs.setString(AppConstants.keyRememberedEmail, _emailController.text.trim());
+    }
+
+    <span class="cm">// Route based on email verification status</span>
+    <span class="kw">if</span> (authProvider.needsEmailVerification) {
+      context.go(<span class="st">'/email-verification'</span>);
+    } <span class="kw">else</span> {
+      context.go(AppRouter.getDashboardRoute(authProvider.userRole!));
+    }
+  }
+}</pre>
+
+<pre><span class="cm">// auth_provider.dart — Login with lockout protection</span>
+<span class="kw">Future</span>&lt;<span class="kw">bool</span>&gt; <span class="fn">login</span>(<span class="tp">String</span> email, <span class="tp">String</span> password) <span class="kw">async</span> {
+  <span class="cm">// Check if account is locked (5 failed attempts = 15 min lockout)</span>
+  <span class="kw">if</span> (isLockedOut) {
+    _errorMessage = <span class="st">'Account locked. Try again in $remaining minutes.'</span>;
+    <span class="kw">return false</span>;
+  }
+
+  <span class="kw">final</span> user = <span class="kw">await</span> _authService.<span class="fn">signInWithEmailAndPassword</span>(
+    email: email, password: password,
+  );
+
+  <span class="kw">if</span> (user != <span class="kw">null</span>) {
+    _loginAttempts = 0;  <span class="cm">// Reset on success</span>
+    _currentUser = user;
+    <span class="kw">await</span> _saveUserToPrefs();
+    <span class="kw">await</span> _initializeNotifications();
+    <span class="kw">return true</span>;
+  }
+}</pre>
+
+<pre><span class="cm">// auth_service.dart — Firebase Auth sign-in + Firestore user data</span>
+<span class="kw">Future</span>&lt;<span class="tp">User</span>?&gt; <span class="fn">signInWithEmailAndPassword</span>({
+  <span class="kw">required</span> <span class="tp">String</span> email,
+  <span class="kw">required</span> <span class="tp">String</span> password,
+}) <span class="kw">async</span> {
+  <span class="kw">final</span> credential = <span class="kw">await</span> _auth.<span class="fn">signInWithEmailAndPassword</span>(
+    email: email, password: password,
+  );
+
+  <span class="cm">// Update last login timestamp in Firestore</span>
+  <span class="kw">await</span> _firestore.collection(<span class="st">'users'</span>).doc(credential.user!.uid)
+      .update({<span class="st">'lastLogin'</span>: FieldValue.serverTimestamp()});
+
+  <span class="cm">// Fetch user profile from Firestore</span>
+  <span class="kw">final</span> userDoc = <span class="kw">await</span> _firestore.collection(<span class="st">'users'</span>).doc(credential.user!.uid).get();
+  <span class="kw">return</span> User.fromJson({<span class="st">'id'</span>: credential.user!.uid, ...userDoc.data()!});
+}</pre>
+
+<h3>2.2 User Registration with Role Selection</h3>
+<div class="feature-card">
+  <div class="title">Register Screen</div>
+  <div class="file">lib/screens/auth/register_screen.dart</div>
+</div>
+
+<div class="screenshot">📱 Screenshot: Register Screen with Name, Email, Password, Confirm Password fields, and Role dropdown (Fan, Organizer, Security, Emergency)</div>
+
+<pre><span class="cm">// register_screen.dart — Registration with role selection</span>
+<span class="kw">Future</span>&lt;<span class="kw">void</span>&gt; <span class="fn">_handleRegister</span>() <span class="kw">async</span> {
+  <span class="kw">final</span> success = <span class="kw">await</span> authProvider.<span class="fn">register</span>(
+    email: _emailController.text.trim(),
+    name: _nameController.text.trim(),
+    password: _passwordController.text,
+    role: _selectedRole!,   <span class="cm">// fan, organizer, security, emergency</span>
+  );
+
+  <span class="kw">if</span> (success) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(<span class="st">'Registration successful!'</span>)),
+    );
+    context.pop(); <span class="cm">// Return to login</span>
+  }
+}</pre>
+
+<pre><span class="cm">// auth_service.dart — Creates Firebase Auth + Firestore user document</span>
+<span class="kw">Future</span>&lt;<span class="tp">User</span>?&gt; <span class="fn">registerWithEmailAndPassword</span>({...}) <span class="kw">async</span> {
+  <span class="kw">final</span> credential = <span class="kw">await</span> _auth.<span class="fn">createUserWithEmailAndPassword</span>(
+    email: email, password: password,
+  );
+
+  <span class="cm">// Send email verification</span>
+  <span class="kw">await</span> credential.user!.sendEmailVerification();
+
+  <span class="cm">// Create user profile in Firestore</span>
+  <span class="kw">await</span> _firestore.collection(<span class="st">'users'</span>).doc(credential.user!.uid).set({
+    <span class="st">'email'</span>: email, <span class="st">'name'</span>: name, <span class="st">'role'</span>: role,
+    <span class="st">'createdAt'</span>: FieldValue.serverTimestamp(),
+    <span class="st">'isActive'</span>: <span class="kw">true</span>, <span class="st">'emailVerified'</span>: <span class="kw">false</span>,
+  });
+}</pre>
+
+<h3>2.3 Password Reset</h3>
+<div class="feature-card">
+  <div class="title">Forgot Password Dialog</div>
+  <div class="file">lib/screens/auth/login_screen.dart (line 90)</div>
+</div>
+
+<pre><span class="cm">// Sends password reset email via Firebase Auth</span>
+<span class="kw">final</span> success = <span class="kw">await</span> authProvider.<span class="fn">resetPassword</span>(email);
+<span class="cm">// → auth_service.dart calls: _auth.sendPasswordResetEmail(email: email);</span></pre>
+
+<!-- ==================== 3. FAN DASHBOARD ==================== -->
+<div class="page-break"></div>
+<h2>3. Fan Dashboard</h2>
+<p><span class="role-badge badge-fan">FAN</span> Login: <code>fan@test.com</code> / <code>password123</code></p>
+
+<h3>3.1 View Venue Map</h3>
+<div class="feature-card">
+  <div class="title">Interactive venue map with real-time crowd heatmap, zone details, and Points of Interest</div>
+  <div class="file">lib/screens/fan/venue_map_screen.dart</div>
+</div>
+
+<div class="screenshot">📱 Screenshot: Map tab showing color-coded zone heatmap (green=safe, yellow=moderate, red=critical) with POI markers for First Aid, Food, Prayer Room, Exit, Entrance</div>
+
+<pre><span class="cm">// venue_map_screen.dart — Real-time heatmap from Firestore</span>
+<span class="tp">CrowdHeatmap</span>(
+  crowdData: crowdProvider.crowdData,   <span class="cm">// Live from Firestore</span>
+  zones: crowdProvider.allZones,         <span class="cm">// 7 zones from Firestore</span>
+  onZoneTap: (zone) {
+    <span class="fn">_showZoneDetails</span>(context, zone.id, crowdProvider);
+  },
+),</pre>
+
+<pre><span class="cm">// Zone tap shows live occupancy data</span>
+<span class="kw">void</span> <span class="fn">_showZoneDetails</span>(context, zoneId, crowdProvider) {
+  <span class="kw">final</span> zone = crowdProvider.getZone(zoneId);
+  <span class="kw">final</span> density = crowdProvider.getZoneDensity(zoneId);
+
+  showModalBottomSheet(
+    builder: (_) => Column(children: [
+      Text(zone.name),
+      Text(<span class="st">'Population: ${density.currentPopulation}/${density.capacity}'</span>),
+      Text(<span class="st">'Occupancy: ${density.occupancyPercentageRounded}%'</span>),
+      Text(<span class="st">'Density: ${density.densityPerSqMeter.toStringAsFixed(1)} p/m²'</span>),
+    ]),
+  );
+}</pre>
+
+<h3>3.2 Receive Live Alerts</h3>
+<div class="feature-card">
+  <div class="title">Real-time alert notifications filtered by fan role with Acknowledge and Notify Emergency actions</div>
+  <div class="file">lib/screens/fan/notifications_screen.dart</div>
+</div>
+
+<div class="screenshot">📱 Screenshot: Alerts tab showing alert cards with severity indicators (Critical=red, Warning=orange, Info=blue) and time ago labels</div>
+
+<pre><span class="cm">// notifications_screen.dart — Loads alerts filtered for fan role</span>
+Consumer&lt;<span class="tp">AlertProvider</span>&gt;(
+  builder: (context, alertProvider, _) {
+    <span class="kw">final</span> allAlerts = alertProvider.<span class="fn">getAlertsForRole</span>(<span class="st">'fan'</span>);
+
+    <span class="kw">return</span> ListView.builder(
+      itemCount: allAlerts.length,
+      itemBuilder: (context, index) => <span class="tp">_AlertCard</span>(
+        alert: allAlerts[index],
+        onTap: () => <span class="fn">_showAlertDetails</span>(context, allAlerts[index], alertProvider),
+      ),
+    );
+  },
+),</pre>
+
+<pre><span class="cm">// Alert detail sheet — Fan can Acknowledge, Notify Emergency, or Mark Resolved</span>
+ElevatedButton(
+  onPressed: () <span class="kw">async</span> {
+    <span class="kw">await</span> alertProvider.<span class="fn">dismissAlert</span>(alert.id);  <span class="cm">// Acknowledge</span>
+  },
+  child: Text(<span class="st">'Acknowledge'</span>),
+),
+ElevatedButton(
+  onPressed: () <span class="kw">async</span> {
+    <span class="kw">await</span> alertProvider.<span class="fn">sendEmergencyAlert</span>(    <span class="cm">// Notify Emergency</span>
+      eventId: alert.eventId,
+      createdBy: user.id,
+      message: <span class="st">'Fan reported emergency: ${alert.message}'</span>,
+    );
+  },
+  child: Text(<span class="st">'Notify Emergency'</span>),
+),</pre>
+
+<h3>3.3 Share Location</h3>
+<div class="feature-card">
+  <div class="title">Toggle location sharing for safety — updates Firestore &amp; uses device GPS</div>
+  <div class="file">lib/screens/fan/fan_dashboard.dart (line 572)</div>
+</div>
+
+<div class="screenshot">📱 Screenshot: Home tab showing "Share My Location" button (green border when ON, gray when OFF)</div>
+
+<pre><span class="cm">// fan_dashboard.dart — Location sharing toggle</span>
+Consumer&lt;<span class="tp">AuthProvider</span>&gt;(
+  builder: (context, authProvider, _) {
+    <span class="kw">final</span> isSharing = authProvider.currentUser?.locationSharingEnabled ?? <span class="kw">false</span>;
+
+    <span class="kw">return</span> GestureDetector(
+      onTap: () => authProvider.<span class="fn">toggleLocationSharing</span>(),
+      child: Container(
+        color: isSharing ? AppColors.green : Colors.white10,
+        child: Text(isSharing ? <span class="st">'Location Sharing: ON'</span> : <span class="st">'Share My Location'</span>),
+      ),
+    );
+  },
+),</pre>
+
+<pre><span class="cm">// auth_provider.dart — Backend toggle</span>
+<span class="kw">Future</span>&lt;<span class="kw">void</span>&gt; <span class="fn">toggleLocationSharing</span>() <span class="kw">async</span> {
+  <span class="kw">final</span> newValue = !_currentUser!.locationSharingEnabled;
+  <span class="kw">if</span> (newValue) {
+    <span class="kw">final</span> success = <span class="kw">await</span> _locationService.<span class="fn">startSharing</span>(_currentUser!.id);
+    <span class="kw">if</span> (!success) { _errorMessage = <span class="st">'Location permission denied.'</span>; <span class="kw">return</span>; }
+  } <span class="kw">else</span> {
+    <span class="kw">await</span> _locationService.<span class="fn">stopSharing</span>();
+  }
+  <span class="kw">await</span> <span class="fn">updateProfile</span>(locationSharingEnabled: newValue);
+}</pre>
+
+<h3>3.4 Report Incident</h3>
+<div class="feature-card">
+  <div class="title">Full incident report form with type selection, severity level, description, and photo upload to Firebase Storage</div>
+  <div class="file">lib/screens/common/report_incident_screen.dart</div>
+</div>
+
+<div class="screenshot">📱 Screenshot: Report Incident screen showing incident type chips (Medical, Security, Overcrowding, Facility), severity selector (Low, Medium, High, Critical), description field, and photo upload area</div>
+
+<pre><span class="cm">// report_incident_screen.dart — Submit incident to Firestore</span>
+<span class="kw">Future</span>&lt;<span class="kw">void</span>&gt; <span class="fn">_submitReport</span>() <span class="kw">async</span> {
+  <span class="cm">// Upload images to Firebase Storage</span>
+  <span class="kw">if</span> (_images.isNotEmpty) {
+    imageUrls = <span class="kw">await</span> StorageService().<span class="fn">uploadIncidentImages</span>(
+      incidentId: incidentId, imageFiles: imageFiles,
+    );
+  }
+
+  <span class="cm">// Submit to Firestore via IncidentProvider</span>
+  <span class="kw">final</span> success = <span class="kw">await</span> incidentProvider.<span class="fn">reportIncident</span>(
+    eventId: event?.id ?? <span class="st">''</span>,
+    reportedBy: user.id,
+    reportedByName: user.name,
+    location: incidentLocation,
+    type: _selectedType,           <span class="cm">// medical, security, overcrowding</span>
+    description: _descriptionController.text.trim(),
+    severity: _selectedSeverity,   <span class="cm">// low, medium, high, critical</span>
+    imageUrls: imageUrls,
+  );
+}</pre>
+
+<!-- ==================== 4. SECURITY DASHBOARD ==================== -->
+<div class="page-break"></div>
+<h2>4. Security Team Dashboard</h2>
+<p><span class="role-badge badge-security">SECURITY</span> Login: <code>security@test.com</code> / <code>password123</code></p>
+
+<h3>4.1 Receive &amp; Respond to Alerts</h3>
+<div class="feature-card">
+  <div class="title">Dashboard with quick action cards, active alerts list, and alert detail sheet with Mark Resolved action</div>
+  <div class="file">lib/screens/security/security_dashboard.dart</div>
+</div>
+
+<div class="screenshot">📱 Screenshot: Security Dashboard showing "Monitor Crowd", "View Alerts", "Team Updates" quick action cards and active alert indicators</div>
+
+<pre><span class="cm">// security_dashboard.dart — Quick action cards navigate to real screens</span>
+<span class="tp">_QuickActionCard</span>(
+  title: <span class="st">'Monitor Crowd'</span>,  onTap: () => onNavigate(1),  <span class="cm">// Zones tab</span>
+),
+<span class="tp">_QuickActionCard</span>(
+  title: <span class="st">'View Alerts'</span>,    onTap: () => onNavigate(2),  <span class="cm">// Alerts tab</span>
+),
+<span class="tp">_QuickActionCard</span>(
+  title: <span class="st">'Team Updates'</span>,   onTap: () => context.push(<span class="st">'/communication'</span>),
+),</pre>
+
+<pre><span class="cm">// Alert detail sheet with resolve action</span>
+ElevatedButton(
+  onPressed: () <span class="kw">async</span> {
+    <span class="kw">final</span> success = <span class="kw">await</span> alertProvider.<span class="fn">resolveAlert</span>(alert.id);
+    Navigator.pop(context);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(success ? <span class="st">'Alert resolved'</span> : <span class="st">'Failed'</span>)),
+    );
+  },
+  child: Text(<span class="st">'Mark Resolved'</span>),
+),</pre>
+
+<h3>4.2 Report Incidents</h3>
+<div class="feature-card">
+  <div class="title">Report button opens shared ReportIncidentScreen (same form as Fan, line 3.4)</div>
+  <div class="file">lib/screens/common/report_incident_screen.dart</div>
+</div>
+
+<pre><span class="cm">// security_dashboard.dart — Report button in monitoring panel</span>
+CustomButton.warning(
+  text: <span class="st">'Report'</span>,
+  icon: Icons.warning_amber,
+  onPressed: () => Navigator.push(context,
+    MaterialPageRoute(builder: (_) => <span class="kw">const</span> <span class="tp">ReportIncidentScreen</span>()),
+  ),
+),</pre>
+
+<h3>4.3 Monitor Crowd Density</h3>
+<div class="feature-card">
+  <div class="title">Zones tab shows real-time density per zone; Map tab shows heatmap with incident markers</div>
+  <div class="file">lib/screens/security/security_dashboard.dart</div>
+</div>
+
+<div class="screenshot">📱 Screenshot: Zones tab showing zone cards with occupancy bars (e.g., North Stand 85%, Food Court 95%) and color-coded status</div>
+
+<pre><span class="cm">// security_dashboard.dart — _ZonesTab with real Firestore data</span>
+Consumer&lt;<span class="tp">CrowdProvider</span>&gt;(
+  builder: (context, crowdProvider, _) {
+    <span class="kw">final</span> zones = crowdProvider.allZones;
+
+    <span class="kw">return</span> ListView.builder(
+      itemCount: zones.length,
+      itemBuilder: (context, index) {
+        <span class="kw">final</span> zone = zones[index];
+        <span class="kw">final</span> density = crowdProvider.<span class="fn">getZoneDensity</span>(zone.id);
+        <span class="kw">final</span> occupancy = density?.occupancyPercentageRounded ?? 0;
+
+        <span class="kw">return</span> GlassCard(child: Column(children: [
+          Text(zone.name),
+          Text(<span class="st">'${density?.currentPopulation ?? 0} / ${zone.capacity}'</span>),
+          LinearProgressIndicator(value: occupancy / 100),
+          Text(<span class="st">'$occupancy% capacity'</span>),
+        ]));
+      },
+    );
+  },
+),</pre>
+
+<!-- ==================== 5. EMERGENCY DASHBOARD ==================== -->
+<div class="page-break"></div>
+<h2>5. Emergency Services Dashboard</h2>
+<p><span class="role-badge badge-emergency">EMERGENCY</span> Login: <code>emergency@test.com</code> / <code>password123</code></p>
+
+<h3>5.1 View Incident Locations on Map</h3>
+<div class="feature-card">
+  <div class="title">FlutterMap with incident markers colored by severity, tappable for navigation to details</div>
+  <div class="file">lib/screens/emergency/emergency_dashboard.dart</div>
+</div>
+
+<div class="screenshot">📱 Screenshot: Emergency Map tab showing venue map with colored incident markers (red=critical, orange=high, yellow=medium) at real GPS coordinates</div>
+
+<pre><span class="cm">// emergency_dashboard.dart — _MapTab with incident markers</span>
+<span class="tp">FlutterMap</span>(
+  options: MapOptions(initialCenter: venueCenter, initialZoom: 16.0),
+  children: [
+    TileLayer(urlTemplate: <span class="st">'https://tile.openstreetmap.org/{z}/{x}/{y}.png'</span>),
+    MarkerLayer(
+      markers: incidentProvider.activeIncidents.map((incident) {
+        <span class="kw">return</span> Marker(
+          point: LatLng(incident.latitude, incident.longitude),
+          child: GestureDetector(
+            onTap: () {
+              <span class="cm">// Navigate to Alerts tab for incident details</span>
+              dashState?.setState(() => dashState._selectedIndex = 2);
+            },
+            child: <span class="tp">IncidentMarkerWidget</span>(
+              severity: incident.severity, type: incident.type,
+            ),
+          ),
+        );
+      }).toList(),
+    ),
+  ],
+),</pre>
+
+<h3>5.2 Update Response Status</h3>
+<div class="feature-card">
+  <div class="title">Dashboard metrics show real dispatched count; evacuation dialog sends live alert to all users</div>
+  <div class="file">lib/screens/emergency/emergency_dashboard.dart</div>
+</div>
+
+<div class="screenshot">📱 Screenshot: Emergency Dashboard tab showing Active Incidents count, Teams Dispatched count, and INITIATE EVACUATION button</div>
+
+<pre><span class="cm">// emergency_dashboard.dart — Real dispatched teams count</span>
+Text(
+  <span class="st">'${incidentProvider.getIncidentsByStatus("dispatched").length}'</span>,
+  style: GoogleFonts.montserrat(fontSize: 28, fontWeight: FontWeight.bold),
+),
+Text(<span class="st">'Teams Dispatched'</span>),</pre>
+
+<pre><span class="cm">// Evacuation sends real emergency alert to Firestore</span>
+ElevatedButton(
+  onPressed: () <span class="kw">async</span> {
+    <span class="kw">final</span> success = <span class="kw">await</span> alertProvider.<span class="fn">sendEmergencyAlert</span>(
+      eventId: eventId,
+      createdBy: user.id,
+      createdByName: user.name,
+      message: <span class="st">'EVACUATION ORDER: All attendees must evacuate immediately.'</span>,
+    );
+  },
+  child: Text(<span class="st">'INITIATE EVACUATION'</span>),
+),</pre>
+
+<h3>5.3 Communicate with Organizers</h3>
+<div class="feature-card">
+  <div class="title">Real-time messaging via Communication Hub with role-based channels</div>
+  <div class="file">lib/screens/common/communication_hub_screen.dart</div>
+</div>
+
+<div class="screenshot">📱 Screenshot: Communication Hub showing channels list (security-ops, emergency-ops, all-staff) and message thread with sender name, role badge, and timestamps</div>
+
+<pre><span class="cm">// communication_hub_screen.dart — Send message to Firestore</span>
+<span class="kw">Future</span>&lt;<span class="kw">void</span>&gt; <span class="fn">_sendMessage</span>() <span class="kw">async</span> {
+  <span class="kw">final</span> success = <span class="kw">await</span> messageProvider.<span class="fn">sendMessage</span>(
+    content: text,
+    senderId: user.id,
+    senderName: user.name,
+    senderRole: user.role,        <span class="cm">// Shows role badge in chat</span>
+    type: _selectedMessageType,   <span class="cm">// text, alert, incident_update</span>
+  );
+}</pre>
+
+<!-- ==================== 6. ORGANIZER DASHBOARD ==================== -->
+<div class="page-break"></div>
+<h2>6. Event Organizer Dashboard</h2>
+<p><span class="role-badge badge-organizer">ORGANIZER</span> Login: <code>organizer@test.com</code> / <code>password123</code></p>
+
+<h3>6.1 View Crowd Movement</h3>
+<div class="feature-card">
+  <div class="title">Crowd monitoring tab with heatmap and zone density cards showing live occupancy</div>
+  <div class="file">lib/screens/organizer/organizer_dashboard.dart (Crowd tab)</div>
+</div>
+
+<div class="screenshot">📱 Screenshot: Organizer Crowd tab with heatmap at top and zone density list below (North Stand 85%, VIP 92%, Food Court 95%)</div>
+
+<pre><span class="cm">// organizer_dashboard.dart — _CrowdTab with real-time data</span>
+Consumer&lt;<span class="tp">CrowdProvider</span>&gt;(
+  builder: (context, crowdProvider, _) {
+    <span class="kw">return</span> Column(children: [
+      <span class="cm">// Real-time heatmap</span>
+      <span class="tp">CrowdHeatmap</span>(
+        crowdData: crowdProvider.crowdData,
+        zones: crowdProvider.allZones,
+      ),
+      <span class="cm">// Zone density cards from Firestore</span>
+      ...crowdProvider.allZones.map((zone) {
+        <span class="kw">final</span> density = crowdProvider.<span class="fn">getZoneDensity</span>(zone.id);
+        <span class="kw">return</span> <span class="tp">_ZoneDensityCard</span>(
+          zoneName: zone.name,
+          currentCount: density?.currentPopulation ?? 0,
+          capacity: zone.capacity,
+        );
+      }),
+    ]);
+  },
+),</pre>
+
+<h3>6.2 Send Safety Alerts</h3>
+<div class="feature-card">
+  <div class="title">Create alert dialog with type, message, severity, and target role selection — saved to Firestore</div>
+  <div class="file">lib/screens/organizer/organizer_dashboard.dart (Alerts tab)</div>
+</div>
+
+<div class="screenshot">📱 Screenshot: Send Alert dialog showing alert type dropdown, message text area, severity selection, target role checkboxes (Fans, Security, Emergency), and Send button</div>
+
+<pre><span class="cm">// organizer_dashboard.dart — Send alert to Firestore</span>
+<span class="kw">final</span> success = <span class="kw">await</span> alertProvider.<span class="fn">sendAlert</span>(
+  eventId: _currentEventId!,
+  createdBy: user.id,
+  createdByName: user.name,
+  type: selectedType,         <span class="cm">// congestion, safety, emergency, info</span>
+  message: messageController.text,
+  severity: selectedSeverity, <span class="cm">// info, warning, critical</span>
+  targetRoles: targetRoles,   <span class="cm">// ['fan', 'security', 'emergency']</span>
+);</pre>
+
+<h3>6.3 View Analytics &amp; Reports</h3>
+<div class="feature-card">
+  <div class="title">Analytics screen with charts (fl_chart), date range picker, incident statistics, and crowd trend data</div>
+  <div class="file">lib/screens/organizer/analytics_screen.dart</div>
+</div>
+
+<div class="screenshot">📱 Screenshot: Analytics screen showing line chart for crowd trends, bar chart for incidents by type, and summary statistics cards</div>
+
+<pre><span class="cm">// analytics_screen.dart — Charts with data from AnalyticsProvider</span>
+<span class="kw">Future</span>&lt;<span class="kw">void</span>&gt; <span class="fn">_initializeData</span>() <span class="kw">async</span> {
+  <span class="kw">final</span> event = <span class="kw">await</span> DatabaseService().<span class="fn">getCurrentActiveEvent</span>();
+  <span class="kw">await</span> analyticsProvider.<span class="fn">initialize</span>(event?.id ?? <span class="st">''</span>);
+}
+
+<span class="cm">// Date range picker for filtering data</span>
+<span class="kw">final</span> picked = <span class="kw">await</span> <span class="fn">showDateRangePicker</span>(
+  context: context,
+  firstDate: DateTime.now().subtract(<span class="kw">const</span> Duration(days: 365)),
+  lastDate: DateTime.now(),
+);</pre>
+
+<h3>6.4 Manage Roles &amp; Zones</h3>
+<div class="feature-card">
+  <div class="title">Staff Management with 3 tabs: All Staff (with assign dialog), Active Assignments, Zone Coverage</div>
+  <div class="file">lib/screens/organizer/staff_management_screen.dart</div>
+</div>
+
+<div class="screenshot">📱 Screenshot: Staff Management — All Staff tab showing security &amp; emergency personnel with Assign/Reassign buttons; Zones tab showing zone names with assigned staff count</div>
+
+<pre><span class="cm">// staff_management_screen.dart — Assign staff to zone</span>
+<span class="kw">void</span> <span class="fn">_showAssignDialog</span>(context, staff) {
+  <span class="kw">final</span> zones = Provider.of&lt;<span class="tp">CrowdProvider</span>&gt;(context).allZones;
+
+  <span class="cm">// Zone dropdown from Firestore</span>
+  DropdownButton&lt;<span class="tp">String</span>&gt;(
+    hint: Text(<span class="st">'Choose a zone'</span>),
+    items: zones.map((zone) {
+      <span class="kw">final</span> count = staffProvider.<span class="fn">getAssignmentsForZone</span>(zone.id).length;
+      <span class="kw">return</span> DropdownMenuItem(
+        value: zone.id,
+        child: Text(<span class="st">'${zone.name} — $count staff'</span>),
+      );
+    }).toList(),
+  ),
+
+  <span class="cm">// Assign button saves to Firestore</span>
+  CustomButton.primary(
+    text: <span class="st">'Assign to Zone'</span>,
+    onPressed: () <span class="kw">async</span> {
+      <span class="kw">await</span> staffProvider.<span class="fn">assignStaffToZone</span>(
+        staffId: staff.id, staffName: staff.name,
+        zoneId: zone.id, zoneName: zone.name,
+        assignedBy: authProvider.currentUser!.id,
+      );
+    },
+  ),
+}</pre>
+
+<!-- ==================== 7. DEMO ACCOUNTS ==================== -->
+<div class="page-break"></div>
+<h2>7. Demo Accounts</h2>
+
+<p>The following pre-seeded accounts are available for testing all features:</p>
+
+<table>
+  <tr><th>Role</th><th>Email</th><th>Password</th><th>Features Available</th></tr>
+  <tr>
+    <td><span class="role-badge badge-fan">FAN</span></td>
+    <td><code>fan@test.com</code></td>
+    <td><code>password123</code></td>
+    <td>View venue map, Receive alerts, Share location, Report incidents</td>
+  </tr>
+  <tr>
+    <td><span class="role-badge badge-organizer">ORGANIZER</span></td>
+    <td><code>organizer@test.com</code></td>
+    <td><code>password123</code></td>
+    <td>Crowd monitoring, Send alerts, Analytics, Staff management, Create events</td>
+  </tr>
+  <tr>
+    <td><span class="role-badge badge-security">SECURITY</span></td>
+    <td><code>security@test.com</code></td>
+    <td><code>password123</code></td>
+    <td>Receive/respond alerts, Report incidents, Monitor crowd density, Communication hub</td>
+  </tr>
+  <tr>
+    <td><span class="role-badge badge-emergency">EMERGENCY</span></td>
+    <td><code>emergency@test.com</code></td>
+    <td><code>password123</code></td>
+    <td>View incident locations, Update response status, Evacuation alerts, Communication hub</td>
+  </tr>
+</table>
+
+<h3>Seed Data Summary</h3>
+<table>
+  <tr><th>Data Type</th><th>Count</th><th>Details</th></tr>
+  <tr><td>Users</td><td>11</td><td>2 fans, 1 organizer, 5 security, 3 emergency</td></tr>
+  <tr><td>Venue</td><td>1</td><td>King Fahd International Stadium, Riyadh</td></tr>
+  <tr><td>Zones</td><td>7</td><td>North/South Stand, East/West Wing, VIP, Food Court, Main Entrance</td></tr>
+  <tr><td>Facilities</td><td>17</td><td>Restrooms, food vendors, first aid, exits, info desks, prayer rooms</td></tr>
+  <tr><td>Event</td><td>1</td><td>Saudi Arabia vs Mexico — FIFA World Cup 2026</td></tr>
+  <tr><td>Crowd Density</td><td>7</td><td>Varying levels: 45%–95% (safe to critical)</td></tr>
+  <tr><td>Incidents</td><td>8</td><td>All statuses: reported, dispatched, on_site, resolved</td></tr>
+  <tr><td>Alerts</td><td>7</td><td>All types: emergency, congestion, safety, info</td></tr>
+  <tr><td>Staff Assignments</td><td>7</td><td>4 security + 2 emergency assigned; 2 unassigned (available)</td></tr>
+  <tr><td>Messages</td><td>15</td><td>Across 3 channels: security-ops, emergency-ops, all-staff</td></tr>
+</table>
+
+<h3>Security Features</h3>
+<table>
+  <tr><th>Feature</th><th>Implementation</th></tr>
+  <tr><td>Password Hashing</td><td>Firebase Auth (bcrypt internally)</td></tr>
+  <tr><td>Login Lockout</td><td>5 failed attempts → 15-minute lockout</td></tr>
+  <tr><td>Session Timeout</td><td>Auto-logout after 7 days inactivity</td></tr>
+  <tr><td>Email Verification</td><td>Sent on registration, checked on login</td></tr>
+  <tr><td>Remember Me</td><td>Email stored in SharedPreferences</td></tr>
+  <tr><td>Offline Support</td><td>User data cached in SharedPreferences</td></tr>
+  <tr><td>Input Validation</td><td>Email regex, password strength, name length</td></tr>
+  <tr><td>Firestore Rules</td><td>Role-based access control (RBAC)</td></tr>
+  <tr><td>Account Deletion</td><td>Firebase Auth + Firestore cleanup</td></tr>
+</table>
+
+</body>
+</html>

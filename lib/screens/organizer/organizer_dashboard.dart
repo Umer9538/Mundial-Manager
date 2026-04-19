@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
+import '../../l10n/app_localizations.dart';
 import '../../core/theme/app_colors.dart';
 import '../../models/event.dart';
 import '../../services/database_service.dart';
@@ -18,6 +19,7 @@ import '../../widgets/common/custom_button.dart';
 import '../../widgets/common/custom_text_field.dart';
 import '../../widgets/common/profile_dialogs.dart';
 import '../../widgets/map/crowd_heatmap.dart';
+import '../fan/settings_screen.dart';
 
 class OrganizerDashboard extends StatefulWidget {
   const OrganizerDashboard({super.key});
@@ -57,6 +59,8 @@ class _OrganizerDashboardState extends State<OrganizerDashboard> {
       alertProvider.initialize(eventId: _currentEventId),
     ]);
 
+    // Connect auto-alert system (dataset-driven density alerts)
+    crowdProvider.connectAlertProvider(alertProvider);
     crowdProvider.startRealTimeUpdates(eventId: _currentEventId);
   }
 
@@ -144,28 +148,28 @@ class _OrganizerDashboardState extends State<OrganizerDashboard> {
               _NavItem(
                 icon: Icons.dashboard_outlined,
                 activeIcon: Icons.dashboard,
-                label: 'Home',
+                label: AppLocalizations.of(context)!.homeTab,
                 isSelected: _selectedIndex == 0,
                 onTap: () => _onItemTapped(0),
               ),
               _NavItem(
                 icon: Icons.map_outlined,
                 activeIcon: Icons.map,
-                label: 'Map',
+                label: AppLocalizations.of(context)!.mapTab,
                 isSelected: _selectedIndex == 1,
                 onTap: () => _onItemTapped(1),
               ),
               _NavItem(
                 icon: Icons.notifications_outlined,
                 activeIcon: Icons.notifications,
-                label: 'Alerts',
+                label: AppLocalizations.of(context)!.alertsTab,
                 isSelected: _selectedIndex == 2,
                 onTap: () => _onItemTapped(2),
               ),
               _NavItem(
                 icon: Icons.person_outline,
                 activeIcon: Icons.person,
-                label: 'Profile',
+                label: AppLocalizations.of(context)!.profileTab,
                 isSelected: _selectedIndex == 3,
                 onTap: () => _onItemTapped(3),
               ),
@@ -207,7 +211,7 @@ class _OrganizerDashboardState extends State<OrganizerDashboard> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Send Alert',
+                    AppLocalizations.of(context)!.sendAlertTitle,
                     style: GoogleFonts.montserrat(
                       fontSize: 22,
                       fontWeight: FontWeight.bold,
@@ -222,33 +226,33 @@ class _OrganizerDashboardState extends State<OrganizerDashboard> {
               ),
               const SizedBox(height: 24),
               CustomTextField(
-                label: 'Alert Title',
-                hint: 'e.g., Gate Closure Change',
+                label: AppLocalizations.of(context)!.alertTitleLabel,
+                hint: AppLocalizations.of(context)!.alertTitleHint,
                 controller: titleController,
               ),
               const SizedBox(height: 16),
               CustomTextField(
-                label: 'Message',
-                hint: 'Describe the alert...',
+                label: AppLocalizations.of(context)!.messageLabel,
+                hint: AppLocalizations.of(context)!.messageHint,
                 controller: messageController,
                 maxLines: 3,
               ),
               const SizedBox(height: 16),
               CustomDropdownField<String>(
-                label: 'Recipient',
-                hint: 'Select recipient',
+                label: AppLocalizations.of(context)!.recipientLabel,
+                hint: AppLocalizations.of(context)!.recipientHint,
                 value: selectedRecipient,
-                items: const [
-                  DropdownMenuItem(value: 'all', child: Text('All Users')),
-                  DropdownMenuItem(value: 'fans', child: Text('Fans Only')),
-                  DropdownMenuItem(value: 'security', child: Text('Security Team')),
-                  DropdownMenuItem(value: 'emergency', child: Text('Emergency Services')),
+                items: [
+                  DropdownMenuItem(value: 'all', child: Text(AppLocalizations.of(context)!.allUsers)),
+                  DropdownMenuItem(value: 'fans', child: Text(AppLocalizations.of(context)!.fansOnly)),
+                  DropdownMenuItem(value: 'security', child: Text(AppLocalizations.of(context)!.securityTeam)),
+                  DropdownMenuItem(value: 'emergency', child: Text(AppLocalizations.of(context)!.emergencyServices)),
                 ],
                 onChanged: (value) => selectedRecipient = value!,
               ),
               const SizedBox(height: 16),
               Text(
-                'Severity',
+                AppLocalizations.of(context)!.severityLabel,
                 style: GoogleFonts.roboto(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
@@ -259,21 +263,21 @@ class _OrganizerDashboardState extends State<OrganizerDashboard> {
               Row(
                 children: [
                   _SeverityChip(
-                    label: 'Critical',
+                    label: AppLocalizations.of(context)!.criticalSeverity,
                     color: AppColors.red,
                     isSelected: selectedSeverity == 'critical',
                     onTap: () => setState(() => selectedSeverity = 'critical'),
                   ),
                   const SizedBox(width: 8),
                   _SeverityChip(
-                    label: 'Moderate',
+                    label: AppLocalizations.of(context)!.moderateLabel,
                     color: AppColors.orange,
                     isSelected: selectedSeverity == 'warning',
                     onTap: () => setState(() => selectedSeverity = 'warning'),
                   ),
                   const SizedBox(width: 8),
                   _SeverityChip(
-                    label: 'Info',
+                    label: AppLocalizations.of(context)!.infoLabel,
                     color: AppColors.blue,
                     isSelected: selectedSeverity == 'info',
                     onTap: () => setState(() => selectedSeverity = 'info'),
@@ -282,7 +286,7 @@ class _OrganizerDashboardState extends State<OrganizerDashboard> {
               ),
               const SizedBox(height: 24),
               CustomButton.danger(
-                text: 'Send Alert',
+                text: AppLocalizations.of(context)!.sendAlertButton,
                 icon: Icons.send,
                 onPressed: () async {
                   if (messageController.text.isNotEmpty) {
@@ -303,7 +307,7 @@ class _OrganizerDashboardState extends State<OrganizerDashboard> {
                       Navigator.pop(context);
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: const Text('Alert sent successfully!'),
+                          content: Text(AppLocalizations.of(context)!.alertSentSuccess),
                           backgroundColor: AppColors.green,
                         ),
                       );
@@ -313,7 +317,7 @@ class _OrganizerDashboardState extends State<OrganizerDashboard> {
               ),
               const SizedBox(height: 12),
               CustomButton.secondary(
-                text: 'Cancel',
+                text: AppLocalizations.of(context)!.cancelButton,
                 onPressed: () => Navigator.pop(context),
               ),
             ],
@@ -450,7 +454,7 @@ class _DashboardTab extends StatelessWidget {
                     ),
                     const SizedBox(width: 10),
                     Text(
-                      'Mundial Manager',
+                      AppLocalizations.of(context)!.appName,
                       style: GoogleFonts.montserrat(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -511,25 +515,14 @@ class _DashboardTab extends StatelessWidget {
                   builder: (context) {
                     final userName = Provider.of<AuthProvider>(context, listen: false)
                         .currentUser?.name ?? 'Organizer';
-                    return Row(
-                      children: [
-                        Text(
-                          'Welcome, ',
-                          style: GoogleFonts.poppins(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w400,
-                            color: Colors.white70,
-                          ),
-                        ),
-                        Text(
-                          userName.split(' ').first,
-                          style: GoogleFonts.poppins(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.softTealBlue,
-                          ),
-                        ),
-                      ],
+                    final l = AppLocalizations.of(context)!;
+                    return Text(
+                      l.welcomeUser(userName.split(' ').first),
+                      style: GoogleFonts.poppins(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w400,
+                        color: Colors.white70,
+                      ),
                     );
                   },
                 ),
@@ -542,7 +535,7 @@ class _DashboardTab extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Organizer Dashboard',
+                      AppLocalizations.of(context)!.organizerDashboard,
                       style: GoogleFonts.montserrat(
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
@@ -554,7 +547,7 @@ class _DashboardTab extends StatelessWidget {
 
                     // Managed Events
                     Text(
-                      'Managed Events',
+                      AppLocalizations.of(context)!.managedEvents,
                       style: GoogleFonts.montserrat(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -566,7 +559,7 @@ class _DashboardTab extends StatelessWidget {
                       Padding(
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         child: Text(
-                          'No events found',
+                          AppLocalizations.of(context)!.noEventsFound,
                           style: GoogleFonts.roboto(
                             fontSize: 14,
                             color: Colors.white54,
@@ -575,7 +568,7 @@ class _DashboardTab extends StatelessWidget {
                       )
                     else
                       ...events.map((event) {
-                        final statusLabel = event.isActive ? 'Live' : event.isUpcoming ? 'Upcoming' : 'Ended';
+                        final statusLabel = event.isActive ? AppLocalizations.of(context)!.liveEventStatus : event.isUpcoming ? AppLocalizations.of(context)!.upcomingEventStatus : AppLocalizations.of(context)!.endedEventStatus;
                         final statusColor = event.isActive ? AppColors.green : event.isUpcoming ? AppColors.softTealBlue : Colors.white54;
                         final dateStr = DateFormat('MM/dd/yyyy').format(event.startDate);
                         return Padding(
@@ -595,7 +588,7 @@ class _DashboardTab extends StatelessWidget {
 
                     // Live Event Map
                     Text(
-                      'Live Event Map',
+                      AppLocalizations.of(context)!.liveEventMap,
                       style: GoogleFonts.montserrat(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -632,7 +625,7 @@ class _DashboardTab extends StatelessWidget {
                 height: 52,
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: () {},
+                  onPressed: () => _showCreateEventDialog(context),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.softTealBlue,
                     foregroundColor: Colors.white,
@@ -642,7 +635,7 @@ class _DashboardTab extends StatelessWidget {
                     elevation: 0,
                   ),
                   child: Text(
-                    'Create Event',
+                    AppLocalizations.of(context)!.createEventButton,
                     style: GoogleFonts.roboto(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
@@ -652,30 +645,140 @@ class _DashboardTab extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               CustomButton.danger(
-                text: 'Send Alert',
+                text: AppLocalizations.of(context)!.sendAlertButton,
                 icon: Icons.campaign,
                 onPressed: onSendAlert,
               ),
               const SizedBox(height: 12),
               CustomButton.secondary(
-                text: 'View Analytics',
+                text: AppLocalizations.of(context)!.analyticsTitle,
                 icon: Icons.analytics_outlined,
                 onPressed: () => context.push('/analytics'),
               ),
               const SizedBox(height: 12),
               CustomButton.secondary(
-                text: 'Staff Management',
+                text: AppLocalizations.of(context)!.staffManagement,
                 icon: Icons.people_outline,
                 onPressed: () => context.push('/staff-management'),
               ),
               const SizedBox(height: 12),
               CustomButton.secondary(
-                text: 'Communication Hub',
+                text: AppLocalizations.of(context)!.communicationHub,
                 icon: Icons.chat_outlined,
                 onPressed: () => context.push('/communication'),
               ),
               ],
             ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showCreateEventDialog(BuildContext context) {
+    final nameController = TextEditingController();
+    final descriptionController = TextEditingController();
+    String selectedStatus = 'upcoming';
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFF1A3A5C), Color(0xFF0F253D)],
+          ),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: EdgeInsets.fromLTRB(
+          24, 24, 24, MediaQuery.of(context).viewInsets.bottom + 24,
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    AppLocalizations.of(context)!.createEventButton,
+                    style: GoogleFonts.montserrat(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, color: Colors.white54),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              CustomTextField(
+                label: AppLocalizations.of(context)!.eventTitleLabel,
+                hint: AppLocalizations.of(context)!.eventTitleHint,
+                controller: nameController,
+              ),
+              const SizedBox(height: 16),
+              CustomTextField(
+                label: AppLocalizations.of(context)!.eventDescriptionLabel,
+                hint: AppLocalizations.of(context)!.eventDescriptionHint,
+                controller: descriptionController,
+                maxLines: 3,
+              ),
+              const SizedBox(height: 24),
+              CustomButton.primary(
+                text: AppLocalizations.of(context)!.createEventButton,
+                icon: Icons.add,
+                onPressed: () async {
+                  if (nameController.text.trim().isEmpty) return;
+
+                  try {
+                    final dbService = DatabaseService();
+                    final event = Event(
+                      id: '',
+                      name: nameController.text.trim(),
+                      description: descriptionController.text.trim(),
+                      venueId: '',
+                      startDate: DateTime.now(),
+                      endDate: DateTime.now().add(const Duration(hours: 4)),
+                      status: selectedStatus,
+                      capacity: 0,
+                    );
+                    await dbService.createEvent(event);
+
+                    if (context.mounted) {
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(AppLocalizations.of(context)!.eventCreatedSuccess),
+                          backgroundColor: AppColors.green,
+                        ),
+                      );
+                    }
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(AppLocalizations.of(context)!.eventCreatedFailed(e.toString())),
+                          backgroundColor: AppColors.red,
+                        ),
+                      );
+                    }
+                  }
+                },
+              ),
+              const SizedBox(height: 12),
+              CustomButton.secondary(
+                text: AppLocalizations.of(context)!.cancelButton,
+                onPressed: () => Navigator.pop(context),
+              ),
+            ],
           ),
         ),
       ),
@@ -714,7 +817,7 @@ class _DashboardTab extends StatelessWidget {
                 ),
                 const SizedBox(height: 20),
                 Text(
-                  'Search',
+                  AppLocalizations.of(context)!.searchLabel,
                   style: GoogleFonts.montserrat(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
@@ -727,7 +830,7 @@ class _DashboardTab extends StatelessWidget {
                   autofocus: true,
                   style: const TextStyle(color: Colors.white),
                   decoration: InputDecoration(
-                    hintText: 'Search events, zones, alerts...',
+                    hintText: AppLocalizations.of(context)!.searchHint,
                     hintStyle: const TextStyle(color: Colors.white38),
                     prefixIcon: const Icon(Icons.search, color: Colors.white54),
                     filled: true,
@@ -750,7 +853,110 @@ class _DashboardTab extends StatelessWidget {
                     if (value.trim().isNotEmpty) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: Text('Searching for "$value"...'),
+                          content: Text(AppLocalizations.of(context)!.searchingFor(value)),
+                          backgroundColor: AppColors.softTealBlue,
+                        ),
+                      );
+                    }
+                  },
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  AppLocalizations.of(context)!.quickAccess,
+                  style: GoogleFonts.roboto(
+                    fontSize: 14,
+                    color: Colors.white70,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _SearchChip(label: AppLocalizations.of(context)!.activeEvents, onTap: () => Navigator.pop(context)),
+                    _SearchChip(label: AppLocalizations.of(context)!.crowdZones, onTap: () { Navigator.pop(context); onNavigate(1); }),
+                    _SearchChip(label: AppLocalizations.of(context)!.alerts, onTap: () { Navigator.pop(context); onNavigate(2); }),
+                    _SearchChip(label: AppLocalizations.of(context)!.incidents, onTap: () { Navigator.pop(context); onNavigate(2); }),
+                  ],
+                ),
+                const SizedBox(height: 24),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showSearchOld(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) {
+        final searchController = TextEditingController();
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+          ),
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: AppColors.coolSteelBlue,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40, height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.white24,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  AppLocalizations.of(context)!.searchLabel,
+                  style: GoogleFonts.montserrat(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: searchController,
+                  autofocus: true,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    hintText: AppLocalizations.of(context)!.searchHint,
+                    hintStyle: const TextStyle(color: Colors.white38),
+                    prefixIcon: const Icon(Icons.search, color: Colors.white54),
+                    filled: true,
+                    fillColor: const Color(0xFF0D1B2A),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Colors.white12),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: AppColors.softTealBlue),
+                    ),
+                  ),
+                  onSubmitted: (value) {
+                    Navigator.pop(context);
+                    if (value.trim().isNotEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(AppLocalizations.of(context)!.searchingFor(value)),
                           backgroundColor: AppColors.softTealBlue,
                         ),
                       );
@@ -1058,7 +1264,7 @@ class _ZoneInfoCard extends StatelessWidget {
         children: zones.take(4).map((zone) {
           final density = crowdProvider.getZoneDensity(zone.id);
           final percentage = density?.occupancyPercentageRounded ?? 0;
-          final level = _getDensityLevel(density?.densityPerSqMeter ?? 0);
+          final level = density?.status ?? 'safe';
 
           return Padding(
             padding: const EdgeInsets.symmetric(vertical: 6),
@@ -1087,13 +1293,6 @@ class _ZoneInfoCard extends StatelessWidget {
         }).toList(),
       ),
     );
-  }
-
-  String _getDensityLevel(double density) {
-    if (density <= 1.5) return 'safe';
-    if (density <= 2.5) return 'moderate';
-    if (density <= 4.0) return 'high';
-    return 'critical';
   }
 
   Color _getColorForLevel(String level) {
@@ -1130,7 +1329,7 @@ class _AlertsTab extends StatelessWidget {
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
                     child: Text(
-                      'Alerts',
+                      AppLocalizations.of(context)!.alertsTab,
                       style: GoogleFonts.montserrat(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
@@ -1414,6 +1613,39 @@ class _ProfileTab extends StatelessWidget {
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
                               ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+
+                        // Settings Button (Teal)
+                        SizedBox(
+                          width: double.infinity,
+                          height: 52,
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const SettingsScreen(),
+                                ),
+                              );
+                            },
+                            icon: const Icon(Icons.settings_outlined),
+                            label: Text(
+                              'Settings & Language',
+                              style: GoogleFonts.roboto(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.softTealBlue,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              elevation: 0,
                             ),
                           ),
                         ),

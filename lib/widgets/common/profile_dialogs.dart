@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../core/theme/app_colors.dart';
+import '../../l10n/app_localizations.dart';
 import '../../providers/auth_provider.dart';
 
 class ProfileDialogs {
@@ -52,7 +53,7 @@ class ProfileDialogs {
                 TextButton(
                   onPressed: isLoading ? null : () => Navigator.pop(dialogContext),
                   child: Text(
-                    'Cancel',
+                    AppLocalizations.of(context)!.cancelButton,
                     style: GoogleFonts.roboto(color: Colors.white54),
                   ),
                 ),
@@ -63,8 +64,8 @@ class ProfileDialogs {
                           final name = nameController.text.trim();
                           if (name.isEmpty) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Name cannot be empty'),
+                              SnackBar(
+                                content: Text(AppLocalizations.of(context)!.nameCannotBeEmpty),
                                 backgroundColor: Colors.red,
                               ),
                             );
@@ -204,7 +205,7 @@ class ProfileDialogs {
                 TextButton(
                   onPressed: isLoading ? null : () => Navigator.pop(dialogContext),
                   child: Text(
-                    'Cancel',
+                    AppLocalizations.of(context)!.cancelButton,
                     style: GoogleFonts.roboto(color: Colors.white54),
                   ),
                 ),
@@ -218,8 +219,8 @@ class ProfileDialogs {
 
                           if (current.isEmpty || newPass.isEmpty || confirm.isEmpty) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Please fill in all fields'),
+                              SnackBar(
+                                content: Text(AppLocalizations.of(context)!.fillAllFields),
                                 backgroundColor: Colors.red,
                               ),
                             );
@@ -228,8 +229,8 @@ class ProfileDialogs {
 
                           if (newPass.length < 8) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('New password must be at least 8 characters'),
+                              SnackBar(
+                                content: Text(AppLocalizations.of(context)!.passwordMinChars),
                                 backgroundColor: Colors.red,
                               ),
                             );
@@ -238,8 +239,8 @@ class ProfileDialogs {
 
                           if (newPass != confirm) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('New passwords do not match'),
+                              SnackBar(
+                                content: Text(AppLocalizations.of(context)!.passwordsDoNotMatch),
                                 backgroundColor: Colors.red,
                               ),
                             );

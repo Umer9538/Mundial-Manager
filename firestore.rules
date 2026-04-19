@@ -65,8 +65,8 @@ service cloud.firestore {
       // Any authenticated user can read events
       allow read: if isAuthenticated();
 
-      // Only organizers can create and update events
-      allow create, update: if isRole('organizer');
+      // Only organizers can create, update, and delete events
+      allow create, update, delete: if isRole('organizer');
     }
 
     // =============================================
@@ -76,8 +76,8 @@ service cloud.firestore {
       // Any authenticated user can read venues
       allow read: if isAuthenticated();
 
-      // Only organizers can create and update venues
-      allow create, update: if isRole('organizer');
+      // Only organizers can manage venues
+      allow create, update, delete: if isRole('organizer');
     }
 
     // =============================================
@@ -87,8 +87,8 @@ service cloud.firestore {
       // Any authenticated user can read zones
       allow read: if isAuthenticated();
 
-      // Only organizers can create and update zones
-      allow create, update: if isRole('organizer');
+      // Only organizers can manage zones
+      allow create, update, delete: if isRole('organizer');
     }
 
     // =============================================
@@ -98,9 +98,9 @@ service cloud.firestore {
       // Any authenticated user can read crowd density data
       allow read: if isAuthenticated();
 
-      // Only organizers can write crowd density data from the client
+      // Only organizers can manage crowd density data from the client
       // Cloud Functions (admin SDK) bypass these rules entirely
-      allow create, update: if isRole('organizer');
+      allow create, update, delete: if isRole('organizer');
     }
 
     // =============================================
@@ -110,8 +110,8 @@ service cloud.firestore {
       // Any authenticated user can read incidents
       allow read: if isAuthenticated();
 
-      // Security, Emergency, and Organizer roles can create incidents
-      allow create: if hasRole(['security', 'emergency', 'organizer']);
+      // Any authenticated user can create incidents (fans can report)
+      allow create: if isAuthenticated();
 
       // Organizer and Emergency can update incident status
       allow update: if hasRole(['organizer', 'emergency']);
@@ -124,15 +124,17 @@ service cloud.firestore {
     // Alerts Collection
     // =============================================
     match /alerts/{alertId} {
-      // Users can read alerts where their role is in the targetRoles array
-      allow read: if isAuthenticated()
-        && getUserRole() in resource.data.targetRoles;
+      // Any authenticated user can read alerts
+      allow read: if isAuthenticated();
 
-      // Organizers can read all alerts regardless of targetRoles
-      allow read: if isRole('organizer');
+      // Any authenticated user can create alerts (auto-alerts, emergency escalation)
+      allow create: if isAuthenticated();
 
-      // Only organizers can create, update, and delete alerts
-      allow create, update, delete: if isRole('organizer');
+      // Any authenticated user can update alerts (acknowledge/dismiss/resolve)
+      allow update: if isAuthenticated();
+
+      // Organizers can delete alerts
+      allow delete: if isRole('organizer');
     }
 
     // =============================================
@@ -176,17 +178,16 @@ service cloud.firestore {
     // Notifications Collection
     // =============================================
     match /notifications/{notificationId} {
-      // Users can read their own notifications
-      allow read: if isAuthenticated()
-        && resource.data.userId == request.auth.uid;
+      // Users can read their own notifications; organizers can read all
+      allow read: if isRole('organizer')
+        || (isAuthenticated() && resource.data.userId == request.auth.uid);
 
       // Users can update their own notifications (e.g., mark as read)
       allow update: if isAuthenticated()
         && resource.data.userId == request.auth.uid;
 
-      // System creates notifications via Cloud Functions (admin SDK)
-      // Allow organizers to create notifications from client as fallback
-      allow create: if isRole('organizer');
+      // Organizers can fully manage notifications
+      allow create, update, delete: if isRole('organizer');
     }
 
     // =============================================

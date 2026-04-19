@@ -4,7 +4,9 @@ import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_map/flutter_map.dart';
+import '../../l10n/app_localizations.dart';
 import '../../core/theme/app_colors.dart';
+import '../fan/settings_screen.dart';
 import '../../core/constants/constants.dart';
 import 'package:latlong2/latlong.dart';
 import '../../services/database_service.dart';
@@ -103,14 +105,14 @@ class _EmergencyDashboardState extends State<EmergencyDashboard> {
               _NavItem(
                 icon: Icons.home_outlined,
                 activeIcon: Icons.home,
-                label: 'Home',
+                label: AppLocalizations.of(context)!.homeTab,
                 isSelected: _selectedIndex == 0,
                 onTap: () => _onItemTapped(0),
               ),
               _NavItem(
                 icon: Icons.warning_amber_outlined,
                 activeIcon: Icons.warning_amber,
-                label: 'Alerts',
+                label: AppLocalizations.of(context)!.alertsTab,
                 isSelected: _selectedIndex == 1,
                 onTap: () => _onItemTapped(1),
                 badge: Consumer<IncidentProvider>(
@@ -124,14 +126,14 @@ class _EmergencyDashboardState extends State<EmergencyDashboard> {
               _NavItem(
                 icon: Icons.map_outlined,
                 activeIcon: Icons.map,
-                label: 'Map',
+                label: AppLocalizations.of(context)!.mapTab,
                 isSelected: _selectedIndex == 2,
                 onTap: () => _onItemTapped(2),
               ),
               _NavItem(
                 icon: Icons.person_outline,
                 activeIcon: Icons.person,
-                label: 'Profile',
+                label: AppLocalizations.of(context)!.profileTab,
                 isSelected: _selectedIndex == 3,
                 onTap: () => _onItemTapped(3),
               ),
@@ -271,11 +273,11 @@ class _HomeTabState extends State<_HomeTab> {
                     children: [
                       IconButton(
                         icon: const Icon(Icons.menu, color: Colors.white),
-                        onPressed: () {},
+                        onPressed: () => widget.onNavigate(3),
                       ),
                       const Spacer(),
                       Text(
-                        widget.venueName ?? 'Emergency',
+                        widget.venueName ?? AppLocalizations.of(context)!.emergencyTitle,
                         style: GoogleFonts.montserrat(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
@@ -295,7 +297,7 @@ class _HomeTabState extends State<_HomeTab> {
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: Text(
-                    'Emergency Dashboard',
+                    AppLocalizations.of(context)!.emergencyDashboard,
                     style: GoogleFonts.montserrat(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
@@ -312,25 +314,13 @@ class _HomeTabState extends State<_HomeTab> {
                     builder: (context) {
                       final userName = Provider.of<AuthProvider>(context, listen: false)
                           .currentUser?.name ?? 'Responder';
-                      return Row(
-                        children: [
-                          Text(
-                            'Welcome, ',
-                            style: GoogleFonts.poppins(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w400,
-                              color: Colors.white70,
-                            ),
-                          ),
-                          Text(
-                            userName.split(' ').first,
-                            style: GoogleFonts.poppins(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.softTealBlue,
-                            ),
-                          ),
-                        ],
+                      return Text(
+                        AppLocalizations.of(context)!.welcomeUser(userName.split(' ').first),
+                        style: GoogleFonts.poppins(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w400,
+                          color: Colors.white70,
+                        ),
                       );
                     },
                   ),
@@ -373,12 +363,15 @@ class _HomeTabState extends State<_HomeTab> {
                         ),
                         children: [
                           TileLayer(
-                            urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                            urlTemplate: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
                             userAgentPackageName: 'com.mundialmanager.app',
                           ),
                           IncidentMarkers(
                             incidents: activeIncidents,
-                            onIncidentTap: (incident) {},
+                            onIncidentTap: (incident) {
+                                final state = context.findAncestorStateOfType<_EmergencyDashboardState>();
+                                state?._onItemTapped(1);
+                              },
                           ),
                         ],
                       ),
@@ -414,7 +407,7 @@ class _HomeTabState extends State<_HomeTab> {
                               elevation: 0,
                             ),
                             child: Text(
-                              'Acknowledge',
+                              AppLocalizations.of(context)!.acknowledgeButton,
                               style: GoogleFonts.roboto(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w600,
@@ -446,7 +439,7 @@ class _HomeTabState extends State<_HomeTab> {
                               elevation: 0,
                             ),
                             child: Text(
-                              'Dispatch',
+                              AppLocalizations.of(context)!.dispatchButton,
                               style: GoogleFonts.roboto(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w600,
@@ -470,7 +463,7 @@ class _HomeTabState extends State<_HomeTab> {
                               elevation: 0,
                             ),
                             child: Text(
-                              'Evacuate',
+                              AppLocalizations.of(context)!.evacuateButton,
                               style: GoogleFonts.roboto(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w600,
@@ -498,7 +491,7 @@ class _HomeTabState extends State<_HomeTab> {
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Incident acknowledged'),
+          content: Text(AppLocalizations.of(context)!.incidentAcknowledged),
           backgroundColor: AppColors.blue,
         ),
       );
@@ -513,7 +506,7 @@ class _HomeTabState extends State<_HomeTab> {
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Team dispatched'),
+          content: Text(AppLocalizations.of(context)!.teamDispatched),
           backgroundColor: AppColors.green,
         ),
       );
@@ -523,36 +516,57 @@ class _HomeTabState extends State<_HomeTab> {
   void _showEvacuationDialog(BuildContext context) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         backgroundColor: AppColors.coolSteelBlue,
         title: Text(
-          'Initiate Evacuation?',
+          AppLocalizations.of(context)!.initiateEvacuation,
           style: GoogleFonts.montserrat(
             color: Colors.white,
             fontWeight: FontWeight.bold,
           ),
         ),
         content: Text(
-          'This will trigger an evacuation alert for all attendees in the venue.',
+          AppLocalizations.of(context)!.evacuationWarning,
           style: GoogleFonts.roboto(color: Colors.white70),
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Cancel', style: GoogleFonts.roboto(color: Colors.white54)),
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text(AppLocalizations.of(context)!.cancelButton, style: GoogleFonts.roboto(color: Colors.white54)),
           ),
           ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: const Text('Evacuation initiated'),
-                  backgroundColor: AppColors.red,
-                ),
+            onPressed: () async {
+              Navigator.pop(dialogContext);
+              final alertProvider = Provider.of<AlertProvider>(context, listen: false);
+              final authProvider = Provider.of<AuthProvider>(context, listen: false);
+              final user = authProvider.currentUser;
+              if (user == null) return;
+
+              final incidentProvider = Provider.of<IncidentProvider>(context, listen: false);
+              final eventId = incidentProvider.incidents.isNotEmpty
+                  ? incidentProvider.incidents.first.eventId
+                  : '';
+
+              final success = await alertProvider.sendEmergencyAlert(
+                eventId: eventId,
+                createdBy: user.id,
+                createdByName: user.name,
+                message: AppLocalizations.of(context)!.evacuationOrderMessage,
               );
+
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(success
+                        ? AppLocalizations.of(context)!.evacuationSentSuccess
+                        : AppLocalizations.of(context)!.failedSendEvacuationAlert),
+                    backgroundColor: success ? AppColors.red : AppColors.orange,
+                  ),
+                );
+              }
             },
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.red),
-            child: Text('Evacuate', style: GoogleFonts.roboto(color: Colors.white, fontWeight: FontWeight.bold)),
+            child: Text(AppLocalizations.of(context)!.evacuateButton, style: GoogleFonts.roboto(color: Colors.white, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -617,18 +631,18 @@ class _HorizontalIncidentCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 2),
-          // Zone
+          // Status
           Text(
-            'Zone ${incident.id.substring(incident.id.length - 1).toUpperCase()}',
+            incident.statusDisplayName,
             style: GoogleFonts.roboto(
               fontSize: 12,
               color: Colors.white54,
             ),
           ),
           const SizedBox(height: 2),
-          // ETA
+          // Time since report
           Text(
-            'ETA: ${(minutes ~/ 2 + 1)}min',
+            AppLocalizations.of(context)!.minutesAgoShort(minutes),
             style: GoogleFonts.roboto(
               fontSize: 12,
               fontWeight: FontWeight.w500,
@@ -692,7 +706,7 @@ class _AlertsTab extends StatelessWidget {
                     padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
                     child: Center(
                       child: Text(
-                        'All Incidents',
+                        AppLocalizations.of(context)!.allIncidentsTitle,
                         style: GoogleFonts.montserrat(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
@@ -717,7 +731,7 @@ class _AlertsTab extends StatelessWidget {
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          'No Active Incidents',
+                          AppLocalizations.of(context)!.noActiveIncidents,
                           style: GoogleFonts.montserrat(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
@@ -726,7 +740,7 @@ class _AlertsTab extends StatelessWidget {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'All emergencies have been resolved',
+                          AppLocalizations.of(context)!.allEmergenciesResolved,
                           style: GoogleFonts.roboto(
                             fontSize: 14,
                             color: Colors.white54,
@@ -860,7 +874,7 @@ class _AlertsTab extends StatelessWidget {
 
                       // Description
                       Text(
-                        'Description',
+                        AppLocalizations.of(context)!.descriptionLabel,
                         style: GoogleFonts.montserrat(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
@@ -880,7 +894,7 @@ class _AlertsTab extends StatelessWidget {
                       // Details
                       _DetailRow(label: 'Status', value: incident.statusDisplayName),
                       _DetailRow(label: 'Reported By', value: incident.reportedByName),
-                      _DetailRow(label: 'Time', value: '${incident.timeSinceCreation.inMinutes} minutes ago'),
+                      _DetailRow(label: 'Time', value: AppLocalizations.of(context)!.minutesAgoShort(incident.timeSinceCreation.inMinutes)),
                       const SizedBox(height: 24),
 
                       // Action Buttons
@@ -897,7 +911,7 @@ class _AlertsTab extends StatelessWidget {
                         children: [
                           Expanded(
                             child: CustomButton.primary(
-                              text: 'Dispatch',
+                              text: AppLocalizations.of(context)!.dispatchButton,
                               icon: Icons.directions_run,
                               onPressed: () async {
                                 await incidentProvider.updateIncidentStatus(
@@ -908,7 +922,7 @@ class _AlertsTab extends StatelessWidget {
                                   Navigator.pop(context);
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
-                                      content: const Text('Team dispatched'),
+                                      content: Text(AppLocalizations.of(context)!.teamDispatched),
                                       backgroundColor: AppColors.blue,
                                     ),
                                   );
@@ -934,7 +948,7 @@ class _AlertsTab extends StatelessWidget {
                                   Navigator.pop(context);
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
-                                      content: const Text('Status: On Site'),
+                                      content: Text(AppLocalizations.of(context)!.statusOnSite),
                                       backgroundColor: AppColors.orange,
                                     ),
                                   );
@@ -957,7 +971,7 @@ class _AlertsTab extends StatelessWidget {
                                   Navigator.pop(context);
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
-                                      content: const Text('Incident resolved'),
+                                      content: Text(AppLocalizations.of(context)!.incidentResolved),
                                       backgroundColor: AppColors.green,
                                     ),
                                   );
@@ -1028,12 +1042,15 @@ class _MapTab extends StatelessWidget {
                 ),
                 children: [
                   TileLayer(
-                    urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    urlTemplate: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
                     userAgentPackageName: 'com.mundialmanager.app',
                   ),
                   IncidentMarkers(
                     incidents: activeIncidents,
-                    onIncidentTap: (incident) {},
+                    onIncidentTap: (incident) {
+                                final state = context.findAncestorStateOfType<_EmergencyDashboardState>();
+                                state?._onItemTapped(1);
+                              },
                   ),
                 ],
               ),
@@ -1078,8 +1095,8 @@ class _MapTab extends StatelessWidget {
                               ),
                               Container(width: 1, height: 30, color: Colors.white24),
                               _MapStat(
-                                label: 'Teams',
-                                value: '5',
+                                label: 'Dispatched',
+                                value: '${incidentProvider.getIncidentsByStatus(AppConstants.statusDispatched).length}',
                                 color: AppColors.green,
                               ),
                             ],
@@ -1102,7 +1119,7 @@ class _MapTab extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        'Severity',
+                        AppLocalizations.of(context)!.severityLabel,
                         style: GoogleFonts.montserrat(
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
@@ -1110,10 +1127,10 @@ class _MapTab extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 8),
-                      _LegendItem(label: 'Critical', color: AppColors.red),
-                      _LegendItem(label: 'High', color: AppColors.orange),
-                      _LegendItem(label: 'Medium', color: AppColors.yellow),
-                      _LegendItem(label: 'Low', color: AppColors.blue),
+                      _LegendItem(label: AppLocalizations.of(context)!.criticalSeverity, color: AppColors.red),
+                      _LegendItem(label: AppLocalizations.of(context)!.highSeverity, color: AppColors.orange),
+                      _LegendItem(label: AppLocalizations.of(context)!.mediumSeverity, color: AppColors.yellow),
+                      _LegendItem(label: AppLocalizations.of(context)!.lowSeverity, color: AppColors.blue),
                     ],
                   ),
                 ),
@@ -1246,6 +1263,39 @@ class _ProfileTab extends StatelessWidget {
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
                               ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+
+                        // Settings Button (Teal)
+                        SizedBox(
+                          width: double.infinity,
+                          height: 52,
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const SettingsScreen(),
+                                ),
+                              );
+                            },
+                            icon: const Icon(Icons.settings_outlined),
+                            label: Text(
+                              'Settings & Language',
+                              style: GoogleFonts.roboto(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.softTealBlue,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              elevation: 0,
                             ),
                           ),
                         ),
@@ -1390,7 +1440,7 @@ class _IncidentCard extends StatelessWidget {
                   if (onAcknowledge != null)
                     Expanded(
                       child: _SmallButton(
-                        label: 'Acknowledge',
+                        label: AppLocalizations.of(context)!.acknowledgeButton,
                         color: AppColors.blue,
                         onPressed: onAcknowledge!,
                       ),
@@ -1400,7 +1450,7 @@ class _IncidentCard extends StatelessWidget {
                   if (onDispatch != null)
                     Expanded(
                       child: _SmallButton(
-                        label: 'Dispatch',
+                        label: AppLocalizations.of(context)!.dispatchButton,
                         color: AppColors.green,
                         onPressed: onDispatch!,
                       ),

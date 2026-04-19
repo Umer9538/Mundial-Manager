@@ -1,6 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:go_router/go_router.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/constants/constants.dart';
+import '../../l10n/app_localizations.dart';
+import '../../providers/auth_provider.dart';
+import '../../providers/locale_provider.dart';
+import '../../services/seed_service.dart';
 import '../../widgets/common/gradient_scaffold.dart';
 import '../../widgets/common/glass_card.dart';
 
@@ -29,7 +37,52 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _locationSharing = true;
   bool _analyticsEnabled = true;
 
-  void _restoreDefaults() {
+  bool _hasUnsavedChanges = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSettings();
+  }
+
+  Future<void> _loadSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+    setState(() {
+      _darkMode = prefs.getBool(AppConstants.keyDarkMode) ?? true;
+      _textSize = prefs.getDouble(AppConstants.keyTextSize) ?? 1.0;
+      _pushNotifications = prefs.getBool(AppConstants.keyPushNotifications) ?? true;
+      _soundEnabled = prefs.getBool(AppConstants.keySoundEnabled) ?? true;
+      _crowdAlerts = prefs.getBool(AppConstants.keyCrowdAlerts) ?? true;
+      _emergencyAlerts = prefs.getBool(AppConstants.keyEmergencyAlerts) ?? true;
+      _selectedLanguage = prefs.getString(AppConstants.keyLanguage) ?? 'English';
+      _locationSharing = prefs.getBool(AppConstants.keyLocationSharing) ?? true;
+      _analyticsEnabled = prefs.getBool(AppConstants.keyAnalyticsEnabled) ?? true;
+    });
+  }
+
+  Future<void> _saveSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(AppConstants.keyDarkMode, _darkMode);
+    await prefs.setDouble(AppConstants.keyTextSize, _textSize);
+    await prefs.setBool(AppConstants.keyPushNotifications, _pushNotifications);
+    await prefs.setBool(AppConstants.keySoundEnabled, _soundEnabled);
+    await prefs.setBool(AppConstants.keyCrowdAlerts, _crowdAlerts);
+    await prefs.setBool(AppConstants.keyEmergencyAlerts, _emergencyAlerts);
+    await prefs.setString(AppConstants.keyLanguage, _selectedLanguage);
+    await prefs.setBool(AppConstants.keyLocationSharing, _locationSharing);
+    await prefs.setBool(AppConstants.keyAnalyticsEnabled, _analyticsEnabled);
+    _hasUnsavedChanges = false;
+  }
+
+  void _markChanged() {
+    if (!_hasUnsavedChanges) {
+      setState(() => _hasUnsavedChanges = true);
+    }
+  }
+
+  void _restoreDefaults() async {
+    final l = AppLocalizations.of(context)!;
     setState(() {
       _darkMode = true;
       _textSize = 1.0;
@@ -40,10 +93,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _selectedLanguage = 'English';
       _locationSharing = true;
       _analyticsEnabled = true;
+      _hasUnsavedChanges = true;
     });
+    Provider.of<LocaleProvider>(context, listen: false).setLocale(const Locale('en'));
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: const Text('Settings restored to defaults'),
+        content: Text(l.settingsRestored),
         backgroundColor: AppColors.softTealBlue,
       ),
     );
@@ -51,6 +106,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+
     return GradientScaffold(
       body: SafeArea(
         child: Padding(
@@ -59,7 +116,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             children: [
               // Title
               Text(
-                'Settings',
+                l.settingsTitle,
                 style: GoogleFonts.montserrat(
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
@@ -75,25 +132,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   children: [
                     _SettingsItem(
                       icon: Icons.visibility_outlined,
-                      label: 'Display Preferences',
+                      label: l.displayPreferences,
                       onTap: () => _showDisplayPreferences(),
                     ),
                     const _SettingsDivider(),
                     _SettingsItem(
                       icon: Icons.notifications_outlined,
-                      label: 'Notifications & Alerts',
+                      label: l.notificationsAlerts,
                       onTap: () => _showNotificationSettings(),
                     ),
                     const _SettingsDivider(),
                     _SettingsItem(
                       icon: Icons.language,
-                      label: 'Language & Localization',
+                      label: l.languageLocalization,
                       onTap: () => _showLanguageSettings(),
                     ),
                     const _SettingsDivider(),
                     _SettingsItem(
                       icon: Icons.info_outline,
-                      label: 'Privacy & Account',
+                      label: l.privacyAccount,
                       onTap: () => _showPrivacySettings(),
                     ),
                   ],
@@ -107,14 +164,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 width: double.infinity,
                 height: 52,
                 child: ElevatedButton(
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: const Text('Settings saved successfully'),
-                        backgroundColor: AppColors.green,
-                      ),
-                    );
-                    Navigator.pop(context);
+                  onPressed: () async {
+                    await _saveSettings();
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(l.settingsSaved),
+                          backgroundColor: AppColors.green,
+                        ),
+                      );
+                      Navigator.pop(context);
+                    }
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.softTealBlue,
@@ -125,7 +185,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     elevation: 0,
                   ),
                   child: Text(
-                    'Save Changes',
+                    _hasUnsavedChanges ? l.saveChanges : l.doneButton,
                     style: GoogleFonts.roboto(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
@@ -139,7 +199,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               TextButton(
                 onPressed: _restoreDefaults,
                 child: Text(
-                  'Restore Defaults',
+                  l.restoreDefaults,
                   style: GoogleFonts.roboto(
                     fontSize: 14,
                     color: Colors.white54,
@@ -148,6 +208,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               const SizedBox(height: 8),
 
+              // Seed Demo Data
+              SizedBox(
+                width: double.infinity,
+                height: 44,
+                child: OutlinedButton.icon(
+                  onPressed: _seedDemoData,
+                  icon: const Icon(Icons.storage_outlined, size: 18),
+                  label: Text(
+                    l.seedDemoData,
+                    style: GoogleFonts.roboto(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.orangeAccent,
+                    side: const BorderSide(color: Colors.orangeAccent, width: 1),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+
               // Secured by Firebase
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -155,7 +240,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   const Icon(Icons.lock_outline, color: Colors.white38, size: 14),
                   const SizedBox(width: 6),
                   Text(
-                    'Secured by Firebase',
+                    AppLocalizations.of(context)!.securedByFirebase,
                     style: GoogleFonts.roboto(
                       fontSize: 12,
                       color: Colors.white38,
@@ -170,7 +255,63 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  Future<void> _seedDemoData() async {
+    final l = AppLocalizations.of(context)!;
+
+    // Show confirmation dialog
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.coolSteelBlue,
+        title: Text(l.seedDemoData, style: GoogleFonts.montserrat(color: Colors.white, fontWeight: FontWeight.bold)),
+        content: Text(
+          'This will clear existing data and load fresh demo data (events, zones, crowd density, incidents, alerts, etc.).\n\nYou will be signed out and need to log back in.',
+          style: GoogleFonts.roboto(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(AppLocalizations.of(context)!.cancelButton)),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.orangeAccent),
+            child: Text(AppLocalizations.of(context)!.seedData),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    // Show loading
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      final seedService = SeedService();
+      await seedService.clearAndReseed();
+      if (!mounted) return;
+      Navigator.pop(context); // dismiss loading
+
+      // Sign back in as the original user (seed signs in as temp organizer)
+      // Redirect to splash to re-initialize the app with fresh data
+      context.go('/splash');
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context); // dismiss loading
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppLocalizations.of(context)!.seedingFailedShort),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    }
+  }
+
   void _showDisplayPreferences() {
+    final l = AppLocalizations.of(context)!;
+
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -197,7 +338,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               const SizedBox(height: 20),
               Text(
-                'Display Preferences',
+                l.displayPreferences,
                 style: GoogleFonts.montserrat(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
@@ -208,19 +349,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
               // Dark Mode
               _ToggleRow(
-                label: 'Dark Mode',
-                subtitle: 'Use dark theme throughout the app',
+                label: l.darkMode,
+                subtitle: l.darkModeSubtitle,
                 value: _darkMode,
                 onChanged: (val) {
                   setSheetState(() {});
                   setState(() => _darkMode = val);
+                  _markChanged();
                 },
               ),
               const SizedBox(height: 20),
 
               // Text Size
               Text(
-                'Text Size',
+                l.textSize,
                 style: GoogleFonts.roboto(
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
@@ -229,7 +371,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               const SizedBox(height: 4),
               Text(
-                _textSize <= 0.8 ? 'Small' : _textSize >= 1.2 ? 'Large' : 'Medium',
+                _textSize <= 0.8 ? l.textSizeSmall : _textSize >= 1.2 ? l.textSizeLarge : l.textSizeMedium,
                 style: GoogleFonts.roboto(fontSize: 13, color: Colors.white54),
               ),
               SliderTheme(
@@ -247,6 +389,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   onChanged: (val) {
                     setSheetState(() {});
                     setState(() => _textSize = val);
+                    _markChanged();
                   },
                 ),
               ),
@@ -267,6 +410,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _showNotificationSettings() {
+    final l = AppLocalizations.of(context)!;
+
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -293,7 +438,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               const SizedBox(height: 20),
               Text(
-                'Notifications & Alerts',
+                l.notificationsAlerts,
                 style: GoogleFonts.montserrat(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
@@ -303,42 +448,46 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 24),
 
               _ToggleRow(
-                label: 'Push Notifications',
-                subtitle: 'Receive push notifications on your device',
+                label: l.pushNotifications,
+                subtitle: l.pushNotificationsSubtitle,
                 value: _pushNotifications,
                 onChanged: (val) {
                   setSheetState(() {});
                   setState(() => _pushNotifications = val);
+                  _markChanged();
                 },
               ),
               const SizedBox(height: 16),
               _ToggleRow(
-                label: 'Sound',
-                subtitle: 'Play sound for new alerts',
+                label: l.soundLabel,
+                subtitle: l.soundSubtitle,
                 value: _soundEnabled,
                 onChanged: (val) {
                   setSheetState(() {});
                   setState(() => _soundEnabled = val);
+                  _markChanged();
                 },
               ),
               const SizedBox(height: 16),
               _ToggleRow(
-                label: 'Crowd Alerts',
-                subtitle: 'Get notified about crowd density changes',
+                label: l.crowdAlerts,
+                subtitle: l.crowdAlertsSubtitle,
                 value: _crowdAlerts,
                 onChanged: (val) {
                   setSheetState(() {});
                   setState(() => _crowdAlerts = val);
+                  _markChanged();
                 },
               ),
               const SizedBox(height: 16),
               _ToggleRow(
-                label: 'Emergency Alerts',
-                subtitle: 'Receive critical emergency notifications',
+                label: l.emergencyAlerts,
+                subtitle: l.emergencyAlertsSubtitle,
                 value: _emergencyAlerts,
                 onChanged: (val) {
                   setSheetState(() {});
                   setState(() => _emergencyAlerts = val);
+                  _markChanged();
                 },
               ),
               const SizedBox(height: 24),
@@ -350,7 +499,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _showLanguageSettings() {
-    final languages = ['English', 'Arabic', 'Spanish', 'French'];
+    final l = AppLocalizations.of(context)!;
+    final languages = [
+      {'label': l.languageEnglish, 'key': 'English', 'locale': const Locale('en')},
+      {'label': l.languageArabic, 'key': 'Arabic', 'locale': const Locale('ar')},
+    ];
 
     showModalBottomSheet(
       context: context,
@@ -377,7 +530,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               const SizedBox(height: 20),
               Text(
-                'Language & Localization',
+                l.languageLocalization,
                 style: GoogleFonts.montserrat(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
@@ -389,7 +542,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ...languages.map((lang) => GestureDetector(
                 onTap: () {
                   setSheetState(() {});
-                  setState(() => _selectedLanguage = lang);
+                  setState(() => _selectedLanguage = lang['key'] as String);
+                  Provider.of<LocaleProvider>(context, listen: false)
+                      .setLocale(lang['locale'] as Locale);
+                  _markChanged();
                   Navigator.pop(context);
                 },
                 child: Container(
@@ -397,12 +553,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
                   margin: const EdgeInsets.only(bottom: 8),
                   decoration: BoxDecoration(
-                    color: _selectedLanguage == lang
+                    color: _selectedLanguage == lang['key']
                         ? AppColors.softTealBlue.withValues(alpha: 0.2)
                         : Colors.white.withValues(alpha: 0.05),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: _selectedLanguage == lang
+                      color: _selectedLanguage == lang['key']
                           ? AppColors.softTealBlue
                           : Colors.white12,
                       width: 1.5,
@@ -411,7 +567,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   child: Row(
                     children: [
                       Text(
-                        lang,
+                        lang['label'] as String,
                         style: GoogleFonts.roboto(
                           fontSize: 15,
                           fontWeight: FontWeight.w500,
@@ -419,7 +575,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                       ),
                       const Spacer(),
-                      if (_selectedLanguage == lang)
+                      if (_selectedLanguage == lang['key'])
                         Icon(Icons.check_circle, color: AppColors.softTealBlue, size: 22),
                     ],
                   ),
@@ -434,6 +590,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _showPrivacySettings() {
+    final l = AppLocalizations.of(context)!;
+
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -460,7 +618,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               const SizedBox(height: 20),
               Text(
-                'Privacy & Account',
+                l.privacyAccount,
                 style: GoogleFonts.montserrat(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
@@ -470,22 +628,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 24),
 
               _ToggleRow(
-                label: 'Location Sharing',
-                subtitle: 'Share your location for crowd tracking',
+                label: l.locationSharing,
+                subtitle: l.locationSharingSubtitle,
                 value: _locationSharing,
                 onChanged: (val) {
                   setSheetState(() {});
                   setState(() => _locationSharing = val);
+                  _markChanged();
                 },
               ),
               const SizedBox(height: 16),
               _ToggleRow(
-                label: 'Analytics',
-                subtitle: 'Help improve the app with usage data',
+                label: l.analyticsLabel,
+                subtitle: l.analyticsSubtitle,
                 value: _analyticsEnabled,
                 onChanged: (val) {
                   setSheetState(() {});
                   setState(() => _analyticsEnabled = val);
+                  _markChanged();
                 },
               ),
               const SizedBox(height: 24),
@@ -507,7 +667,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ),
                   child: Text(
-                    'Delete Account',
+                    l.deleteAccount,
                     style: GoogleFonts.roboto(
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
@@ -524,13 +684,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _showDeleteAccountConfirmation() {
+    final l = AppLocalizations.of(context)!;
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF1A2A3A),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(
-          'Delete Account',
+          l.deleteAccount,
           style: GoogleFonts.montserrat(
             fontSize: 18,
             fontWeight: FontWeight.bold,
@@ -538,26 +700,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         ),
         content: Text(
-          'Are you sure you want to delete your account? This action cannot be undone.',
+          l.deleteAccountConfirm,
           style: GoogleFonts.roboto(fontSize: 14, color: Colors.white70),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: Text(
-              'Cancel',
+              AppLocalizations.of(context)!.cancelButton,
               style: GoogleFonts.roboto(color: Colors.white54),
             ),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: const Text('Account deletion requested'),
-                  backgroundColor: AppColors.red,
-                ),
-              );
+              final authProvider = Provider.of<AuthProvider>(context, listen: false);
+              final success = await authProvider.deleteAccount();
+              if (mounted) {
+                if (success) {
+                  context.go('/login');
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(authProvider.errorMessage ?? AppLocalizations.of(context)!.failedDeleteAccount),
+                      backgroundColor: AppColors.red,
+                    ),
+                  );
+                }
+              }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.red,
@@ -566,7 +736,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
             child: Text(
-              'Delete',
+              AppLocalizations.of(context)!.deleteButton,
               style: GoogleFonts.roboto(
                 color: Colors.white,
                 fontWeight: FontWeight.w600,

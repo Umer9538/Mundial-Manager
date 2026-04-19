@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../core/constants/constants.dart';
 import '../../core/routing/app_router.dart';
 import '../../core/theme/app_colors.dart';
+import '../../l10n/app_localizations.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/common/gradient_scaffold.dart';
 
@@ -55,8 +56,9 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   Future<void> _initializeApp() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
-    // Initialize auth provider
+    // Initialize auth provider and listen for state changes
     await authProvider.initialize();
+    authProvider.listenToAuthChanges();
 
     // Wait for animation to complete
     await Future.delayed(const Duration(seconds: 2));
@@ -81,6 +83,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     return GradientScaffold(
       body: Center(
         child: FadeTransition(
@@ -96,7 +99,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
 
                 // App Name
                 Text(
-                  'Mundial',
+                  l.appName,
                   style: GoogleFonts.montserrat(
                     fontSize: 36,
                     fontWeight: FontWeight.bold,
@@ -104,7 +107,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                   ),
                 ),
                 Text(
-                  'MANAGER',
+                  l.appNameManager,
                   style: GoogleFonts.montserrat(
                     fontSize: 16,
                     fontWeight: FontWeight.w500,
